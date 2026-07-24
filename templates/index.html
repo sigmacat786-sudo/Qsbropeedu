@@ -8,23 +8,52 @@
 </head>
 <body>
 
-  <div class="page-center">
-    <div class="card upload-card">
-      <h1 class="brand">SmartyMS Quiz System</h1>
-      <p class="subtitle">PDF upload karo, quiz link seconds me generate karo.</p>
+  <!-- ── STRICT ADMIN LOGIN PORTAL (must pass before upload page shows) ─── -->
+  <div id="loginGate" class="modal">
+    <div class="modal-card gate-card">
+      <p class="login-title">STRICT LOGIN PORTAL</p>
+      <p class="login-subtitle">Made By: Smarty MS Bro</p>
 
-      <form id="uploadForm">
-        <label class="dropzone" id="dropzone">
-          <input type="file" id="pdfInput" name="pdf_file" accept="application/pdf" hidden>
-          <span id="dropzoneText">📄 PDF file yahan choose karo (koi question limit nahi)</span>
-        </label>
+      <label class="gate-label" for="ownerNameInput">Name: Enter Website Owner Name;</label>
+      <input type="text" id="ownerNameInput" class="login-input" autocomplete="off" autocapitalize="off" spellcheck="false">
 
-        <button type="submit" id="generateBtn" class="btn btn-primary" disabled>
-          ⚡ GENERATE QUIZ
-        </button>
-      </form>
+      <label class="gate-label" for="adminKeyInput">Admin Key: Please Enter Owner/Admin Key Here;</label>
+      <input type="password" id="adminKeyInput" class="login-input" autocomplete="off" autocapitalize="off" spellcheck="false">
 
-      <div id="statusBox" class="status-box hidden"></div>
+      <label class="gate-label" for="vipKeyInput">VIP Key: Please Enter Your VIP Key</label>
+      <input type="password" id="vipKeyInput" class="login-input" autocomplete="off" autocapitalize="off" spellcheck="false">
+
+      <p id="loginError" class="gate-error hidden"></p>
+
+      <div class="gate-actions">
+        <button id="loginBtn" class="btn btn-primary">LOGIN</button>
+        <button id="getKeysBtn" class="btn btn-ghost">GET KEYS</button>
+      </div>
+
+      <p class="login-caption">Only for Education Purpose Simple Quiz Generate Web 💙!</p>
+    </div>
+  </div>
+
+  <!-- ── EXISTING UPLOAD PAGE (unchanged, just hidden until login passes) ─ -->
+  <div id="uploadWrapper" class="hidden">
+    <div class="page-center">
+      <div class="card upload-card">
+        <h1 class="brand">SmartyMS Quiz System</h1>
+        <p class="subtitle">PDF upload karo, quiz link seconds me generate karo.</p>
+
+        <form id="uploadForm">
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="pdfInput" name="pdf_file" accept="application/pdf" hidden>
+            <span id="dropzoneText">📄 PDF file yahan choose karo (koi question limit nahi)</span>
+          </label>
+
+          <button type="submit" id="generateBtn" class="btn btn-primary" disabled>
+            ⚡ GENERATE QUIZ
+          </button>
+        </form>
+
+        <div id="statusBox" class="status-box hidden"></div>
+      </div>
     </div>
   </div>
 
