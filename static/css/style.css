@@ -356,3 +356,36 @@ body {
   .quiz-layout { flex-direction: column; }
   .progress-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Admin Login Portal (added) ─────────────────────────────────────────── */
+.login-title {
+  margin: 0 0 2px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  color: #5b2fd6;
+  text-align: center;
+}
+.login-subtitle {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: #8a8fae;
+  text-align: center;
+}
+.login-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d8d9ee;
+  border-radius: 10px;
+  font-size: 15px;
+  margin-bottom: 14px;
+}
+.login-input:focus { outline: none; border-color: #5b5fc7; }
+.login-caption {
+  margin-top: 18px;
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: .3px;
+  color: #2b6fef;
+  text-align: center;
+}
