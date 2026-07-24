@@ -1,1 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title }} — SmartyMS Quiz</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
 
+<div class="topbar">
+  <button id="backBtn" class="link-btn">← Back</button>
+  <div class="timer">⏱ <span id="timer">00:00:00</span></div>
+  <button id="submitBtn" class="btn btn-primary btn-sm">Submit Quiz</button>
+</div>
+
+<div class="quiz-layout">
+
+  <!-- LEFT: question panel -->
+  <div class="question-panel">
+    <div class="q-header">
+      <span id="qNumberBadge" class="q-badge">1</span>
+    </div>
+
+    <p id="questionText" class="question-text">Loading question...</p>
+
+    <div id="optionsList" class="options-list"></div>
+
+    <div class="nav-row">
+      <button id="prevBtn" class="btn btn-ghost">Previous</button>
+      <button id="skipBtn" class="btn btn-ghost">Skip</button>
+      <button id="nextBtn" class="btn btn-primary">Next</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: stats + question grid -->
+  <div class="side-panel">
+    <div class="stats-row">
+      <div class="stat-pill stat-correct"><span id="statCorrect">0</span> Correct</div>
+      <div class="stat-pill stat-incorrect"><span id="statIncorrect">0</span> Incorrect</div>
+    </div>
+    <div class="stat-pill stat-notanswered full-width"><span id="statNotAnswered">0</span> Not Answered</div>
+
+    <p class="questions-label">QUESTIONS</p>
+    <div id="questionGrid" class="question-grid"></div>
+  </div>
+</div>
+
+<!-- RESULT MODAL -->
+<div id="resultModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Result Summary</h2>
+    <div class="score-box">
+      <span class="score-label">SCORE</span>
+      <span id="scoreValue" class="score-value">0/0</span>
+    </div>
+
+    <div class="progress-grid">
+      <div class="progress-card">
+        <span>✅ Correct</span>
+        <strong id="resCorrect">0</strong>
+      </div>
+      <div class="progress-card">
+        <span>❌ Incorrect</span>
+        <strong id="resIncorrect">0</strong>
+      </div>
+      <div class="progress-card">
+        <span>⏭ Skipped</span>
+        <strong id="resSkipped">0</strong>
+      </div>
+      <div class="progress-card">
+        <span>🎯 Accuracy</span>
+        <strong id="resAccuracy">0%</strong>
+      </div>
+      <div class="progress-card">
+        <span>⏱ Time Taken</span>
+        <strong id="resTime">00:00:00</strong>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button id="reattemptBtn" class="btn btn-primary">Reattempt</button>
+      <button id="viewSolutionsBtn" class="btn btn-ghost">View Solutions</button>
+    </div>
+  </div>
+</div>
+
+<!-- SOLUTIONS MODAL -->
+<div id="solutionsModal" class="modal hidden">
+  <div class="modal-card modal-wide">
+    <h2>Solutions</h2>
+    <div id="solutionsList" class="solutions-list"></div>
+    <button id="closeSolutionsBtn" class="btn btn-primary">Close</button>
+  </div>
+</div>
+
+<script>
+  const QUIZ_ID = {{ quiz_id | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
+</body>
+</html>

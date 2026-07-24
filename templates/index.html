@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartyMS Quiz System — Upload PDF</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <div class="page-center">
+    <div class="card upload-card">
+      <h1 class="brand">SmartyMS Quiz System</h1>
+      <p class="subtitle">PDF upload karo, quiz link seconds me generate karo.</p>
+
+      <form id="uploadForm">
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="pdfInput" name="pdf_file" accept="application/pdf" hidden>
+          <span id="dropzoneText">📄 PDF file yahan choose karo (koi question limit nahi)</span>
+        </label>
+
+        <button type="submit" id="generateBtn" class="btn btn-primary" disabled>
+          ⚡ GENERATE QUIZ
+        </button>
+      </form>
+
+      <div id="statusBox" class="status-box hidden"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
