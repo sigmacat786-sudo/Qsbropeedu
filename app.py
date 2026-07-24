@@ -10,7 +10,13 @@ from utils.db import get_db
 from utils.pdf_parser import extract_questions_from_pdf
 
 # ─── Basic Config ──────────────────────────────────────────────────────────
-BASE_URL = os.environ.get("BASE_URL", "https://your-app-name.onrender.com").rstrip("/")
+# This is the domain shown/used in every generated quiz link (?v=...).
+# It is intentionally hardcoded (not read from env) so the real backend
+# domain (wherever this admin/upload service itself is deployed, e.g.
+# smartyms-toxic-quiz-system.onrender.com) never leaks into shared links.
+# To change it later, edit ONLY this one line:
+PUBLIC_PLAY_BASE_URL = "https://learnwithpw-recorded.onrender.com"
+
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "/tmp/smartyms_uploads")
 MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_MB", "500")) * 1024 * 1024  # default 500MB safety cap
 
@@ -123,7 +129,7 @@ def upload():
     }
     quizzes_col.insert_one(quiz_doc)
 
-    play_link = f"{BASE_URL}/play?v={quiz_id}"
+    play_link = f"{PUBLIC_PLAY_BASE_URL}/play?v={quiz_id}"
 
     return jsonify({
         "ok": True,
@@ -140,7 +146,7 @@ def generated(quiz_id):
     quiz = quizzes_col.find_one({"_id": quiz_id}, {"title": 1, "total_questions": 1})
     if not quiz:
         return redirect(url_for("index"))
-    play_link = f"{BASE_URL}/play?v={quiz_id}"
+    play_link = f"{PUBLIC_PLAY_BASE_URL}/play?v={quiz_id}"
     return render_template("generated.html", title=quiz["title"],
                             total_questions=quiz["total_questions"],
                             play_link=play_link)
