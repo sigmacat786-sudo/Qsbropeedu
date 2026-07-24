@@ -8,52 +8,92 @@
 </head>
 <body>
 
-<div class="topbar">
-  <button id="backBtn" class="link-btn">← Back</button>
-  <div class="timer">⏱ <span id="timer">00:00:00</span></div>
-  <button id="submitBtn" class="btn btn-primary btn-sm">Submit Quiz</button>
-</div>
+<!-- ── NAME GATE (shown before quiz starts) ───────────────────────────── -->
+<div id="nameGate" class="modal">
+  <div class="modal-card gate-card">
+    <p id="brandShimmer" class="brand-shimmer">Powered By: Smarty-Toxic Bro</p>
 
-<div class="quiz-layout">
+    <p class="gate-quiz-label">Quiz: <strong>{{ title }}</strong></p>
 
-  <!-- LEFT: question panel -->
-  <div class="question-panel">
-    <div class="q-header">
-      <span id="qNumberBadge" class="q-badge">1</span>
+    <label class="gate-label" for="nameInput">Name: Please Enter Your Name!</label>
+    <input type="text" id="nameInput" maxlength="50" placeholder="Your name" autocomplete="off">
+    <p id="nameError" class="gate-error hidden"></p>
+
+    <div class="gate-actions">
+      <button id="saveAttendBtn" class="btn btn-primary">SAVE AND ATTEND</button>
+      <button id="helpBtn" class="btn btn-ghost">HELP</button>
     </div>
-
-    <p id="questionText" class="question-text">Loading question...</p>
-
-    <div id="optionsList" class="options-list"></div>
-
-    <div class="nav-row">
-      <button id="prevBtn" class="btn btn-ghost">Previous</button>
-      <button id="skipBtn" class="btn btn-ghost">Skip</button>
-      <button id="nextBtn" class="btn btn-primary">Next</button>
-    </div>
-  </div>
-
-  <!-- RIGHT: stats + question grid -->
-  <div class="side-panel">
-    <div class="stats-row">
-      <div class="stat-pill stat-correct"><span id="statCorrect">0</span> Correct</div>
-      <div class="stat-pill stat-incorrect"><span id="statIncorrect">0</span> Incorrect</div>
-    </div>
-    <div class="stat-pill stat-notanswered full-width"><span id="statNotAnswered">0</span> Not Answered</div>
-
-    <p class="questions-label">QUESTIONS</p>
-    <div id="questionGrid" class="question-grid"></div>
   </div>
 </div>
 
-<!-- RESULT MODAL -->
+<!-- ── MAIN QUIZ UI (hidden until name saved) ──────────────────────────── -->
+<div id="quizWrapper" class="hidden">
+
+  <div class="topbar">
+    <button id="backBtn" class="link-btn">← Back</button>
+    <div class="timer">⏱ <span id="timer">00:00:00</span></div>
+    <button id="submitBtn" class="btn btn-primary btn-sm">Submit Quiz</button>
+  </div>
+
+  <div class="quiz-layout">
+
+    <!-- LEFT: question panel -->
+    <div class="question-panel">
+      <div class="q-header">
+        <span id="qNumberBadge" class="q-badge">1</span>
+      </div>
+
+      <div class="question-image-wrap">
+        <img id="questionImage" class="question-image" alt="Question" src="">
+      </div>
+
+      <div id="optionsList" class="options-list options-abcd"></div>
+
+      <div class="nav-row">
+        <button id="prevBtn" class="btn btn-ghost">Previous</button>
+        <button id="skipBtn" class="btn btn-ghost">Skip</button>
+        <button id="nextBtn" class="btn btn-primary">Next</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: stats + question grid -->
+    <div class="side-panel">
+      <div class="stats-row">
+        <div class="stat-pill stat-correct"><span id="statCorrect">0</span> Correct</div>
+        <div class="stat-pill stat-incorrect"><span id="statIncorrect">0</span> Incorrect</div>
+      </div>
+      <div class="stat-pill stat-notanswered full-width"><span id="statNotAnswered">0</span> Not Answered</div>
+
+      <p class="questions-label">QUESTIONS</p>
+      <div id="questionGrid" class="question-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CONFIRM SUBMIT MODAL ─────────────────────────────────────────────── -->
+<div id="confirmSubmitModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Are you Sure to Submit Your Test?</h2>
+    <div class="modal-actions">
+      <button id="confirmYesBtn" class="btn btn-primary">Yes</button>
+      <button id="confirmNoBtn" class="btn btn-ghost">No</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── RESULT MODAL ─────────────────────────────────────────────────────── -->
 <div id="resultModal" class="modal hidden">
   <div class="modal-card">
     <h2>Result Summary</h2>
+    <p id="resName" class="res-name"></p>
+
     <div class="score-box">
-      <span class="score-label">SCORE</span>
-      <span id="scoreValue" class="score-value">0/0</span>
+      <span class="score-label">MARKS</span>
+      <span id="scoreValue" class="score-value">0 / 0</span>
+      <span id="scorePercent" class="score-percent">0%</span>
     </div>
+
+    <p id="resMessage" class="res-message"></p>
 
     <div class="progress-grid">
       <div class="progress-card">
@@ -69,23 +109,20 @@
         <strong id="resSkipped">0</strong>
       </div>
       <div class="progress-card">
-        <span>🎯 Accuracy</span>
-        <strong id="resAccuracy">0%</strong>
-      </div>
-      <div class="progress-card">
         <span>⏱ Time Taken</span>
         <strong id="resTime">00:00:00</strong>
       </div>
     </div>
 
-    <div class="modal-actions">
+    <div class="modal-actions modal-actions-col">
       <button id="reattemptBtn" class="btn btn-primary">Reattempt</button>
       <button id="viewSolutionsBtn" class="btn btn-ghost">View Solutions</button>
+      <button id="downloadScoreBtn" class="btn btn-blue">DOWNLOAD YOUR SCORE</button>
     </div>
   </div>
 </div>
 
-<!-- SOLUTIONS MODAL -->
+<!-- ── SOLUTIONS MODAL ──────────────────────────────────────────────────── -->
 <div id="solutionsModal" class="modal hidden">
   <div class="modal-card modal-wide">
     <h2>Solutions</h2>
@@ -96,6 +133,8 @@
 
 <script>
   const QUIZ_ID = {{ quiz_id | tojson }};
+  const QUIZ_TITLE = {{ title | tojson }};
+  const HELP_URL = "https://t.me/JapaneseFury";
 </script>
 <script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
 </body>
