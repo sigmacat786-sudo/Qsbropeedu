@@ -1,3 +1,44 @@
+// ── STRICT ADMIN LOGIN PORTAL ───────────────────────────────────────────
+// Case-sensitive on purpose. Any ONE of the listed Admin Keys / VIP Keys
+// is accepted, but the Owner Name must match exactly.
+// NOTE: this check runs in the browser, so treat it as a simple access
+// gate (not cryptographic security) — anyone with page-source access
+// could read these values. Good enough for "keep casual visitors out",
+// not for protecting truly sensitive data.
+const OWNER_NAME = "ViPxMSvBRO";
+const ADMIN_KEYS = ["MS#nEET_X9q!7LvP2", "NeeT$MS_A4r!8QxZ5", "mS@NeeT_K7#vP3Lx9"];
+const VIP_KEYS = ["ToXic#ViP_X9q!7LvP2", "tOxic@Vip_A4r!8QxZ5", "ToXic$ViP_K7#vP3Lx9"];
+const GET_KEYS_URL = "https://t.me/JapaneseFury";
+
+const loginGate = document.getElementById("loginGate");
+const uploadWrapper = document.getElementById("uploadWrapper");
+const ownerNameInput = document.getElementById("ownerNameInput");
+const adminKeyInput = document.getElementById("adminKeyInput");
+const vipKeyInput = document.getElementById("vipKeyInput");
+const loginError = document.getElementById("loginError");
+const loginBtn = document.getElementById("loginBtn");
+const getKeysBtn = document.getElementById("getKeysBtn");
+
+loginBtn.addEventListener("click", () => {
+  const nameOk = ownerNameInput.value === OWNER_NAME;               // exact, case-sensitive
+  const adminOk = ADMIN_KEYS.includes(adminKeyInput.value);         // exact, case-sensitive
+  const vipOk = VIP_KEYS.includes(vipKeyInput.value);               // exact, case-sensitive
+
+  if (nameOk && adminOk && vipOk) {
+    loginError.classList.add("hidden");
+    loginGate.classList.add("hidden");
+    uploadWrapper.classList.remove("hidden");
+  } else {
+    loginError.textContent = "❌ Invalid Name / Admin Key / VIP Key. Check karo aur dobara try karo.";
+    loginError.classList.remove("hidden");
+  }
+});
+
+getKeysBtn.addEventListener("click", () => {
+  window.open(GET_KEYS_URL, "_blank");
+});
+
+// ── Existing upload page logic (unchanged) ──────────────────────────────
 const pdfInput = document.getElementById("pdfInput");
 const dropzone = document.getElementById("dropzone");
 const dropzoneText = document.getElementById("dropzoneText");
