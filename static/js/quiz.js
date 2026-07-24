@@ -6,8 +6,9 @@ let visited = {};        // { "1": true } -> answered or explicitly skipped
 let startTime = null;
 let timerInterval = null;
 let solutionsData = [];
+let userName = "";
+let lastResult = null;   // stores latest submit() response for the download button
 
-// anonymous user id, persisted in this browser so a re-visit is tracked as same user
 function getUserId() {
   let id = localStorage.getItem("smartyms_user_id");
   if (!id) {
@@ -18,8 +19,15 @@ function getUserId() {
 }
 
 // ── DOM refs ────────────────────────────────────────────────────────────
+const nameGate = document.getElementById("nameGate");
+const nameInput = document.getElementById("nameInput");
+const nameError = document.getElementById("nameError");
+const saveAttendBtn = document.getElementById("saveAttendBtn");
+const helpBtn = document.getElementById("helpBtn");
+const quizWrapper = document.getElementById("quizWrapper");
+
 const qNumberBadge = document.getElementById("qNumberBadge");
-const questionText = document.getElementById("questionText");
+const questionImage = document.getElementById("questionImage");
 const optionsList = document.getElementById("optionsList");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
@@ -32,26 +40,62 @@ const statCorrect = document.getElementById("statCorrect");
 const statIncorrect = document.getElementById("statIncorrect");
 const statNotAnswered = document.getElementById("statNotAnswered");
 
+const confirmSubmitModal = document.getElementById("confirmSubmitModal");
+const confirmYesBtn = document.getElementById("confirmYesBtn");
+const confirmNoBtn = document.getElementById("confirmNoBtn");
+
 const resultModal = document.getElementById("resultModal");
+const resName = document.getElementById("resName");
 const scoreValue = document.getElementById("scoreValue");
+const scorePercent = document.getElementById("scorePercent");
+const resMessage = document.getElementById("resMessage");
 const resCorrect = document.getElementById("resCorrect");
 const resIncorrect = document.getElementById("resIncorrect");
 const resSkipped = document.getElementById("resSkipped");
-const resAccuracy = document.getElementById("resAccuracy");
 const resTime = document.getElementById("resTime");
 const reattemptBtn = document.getElementById("reattemptBtn");
 const viewSolutionsBtn = document.getElementById("viewSolutionsBtn");
+const downloadScoreBtn = document.getElementById("downloadScoreBtn");
 
 const solutionsModal = document.getElementById("solutionsModal");
 const solutionsListEl = document.getElementById("solutionsList");
 const closeSolutionsBtn = document.getElementById("closeSolutionsBtn");
 
+// ── Name gate ───────────────────────────────────────────────────────────
+// Blocks emoji / pictograph characters; letters, numbers, spaces, basic punctuation allowed.
+const EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/u;
+
+function validateName(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return "Naam likhna zaroori hai.";
+  if (trimmed.length > 50) return "Naam 50 characters se zyada nahi ho sakta.";
+  if (EMOJI_RE.test(trimmed)) return "Naam me emoji allowed nahi hai.";
+  return null;
+}
+
+saveAttendBtn.addEventListener("click", () => {
+  const err = validateName(nameInput.value);
+  if (err) {
+    nameError.textContent = err;
+    nameError.classList.remove("hidden");
+    return;
+  }
+  userName = nameInput.value.trim();
+  nameGate.classList.add("hidden");
+  quizWrapper.classList.remove("hidden");
+  loadQuiz();
+});
+
+helpBtn.addEventListener("click", () => {
+  window.open(HELP_URL, "_blank");
+});
+
 // ── Init ────────────────────────────────────────────────────────────────
 async function loadQuiz() {
-  const res = await fetch(`/api/quiz/${QUIZ_ID}`);
+  const res = await fetch(`/api/quiz/${encodeURIComponent(QUIZ_ID)}`);
   const data = await res.json();
   if (!data.ok) {
-    questionText.textContent = "Quiz load nahi hua: " + data.error;
+    questionImage.alt = "Quiz load nahi hua: " + data.error;
     return;
   }
   questions = data.questions;
@@ -83,14 +127,14 @@ function renderQuestion(index) {
   currentIndex = index;
   const q = questions[index];
   qNumberBadge.textContent = q.id;
-  questionText.textContent = q.text;
+  questionImage.src = q.image_url;
+  questionImage.alt = `Question ${q.id}`;
 
   optionsList.innerHTML = "";
   ["A", "B", "C", "D"].forEach((letter) => {
-    if (!(letter in q.options)) return;
     const div = document.createElement("div");
-    div.className = "option-item" + (answers[q.id] === letter ? " selected" : "");
-    div.innerHTML = `<span class="option-letter">${letter}</span><span>${q.options[letter]}</span>`;
+    div.className = "option-item option-abcd" + (answers[q.id] === letter ? " selected" : "");
+    div.innerHTML = `<span class="option-letter">${letter}</span>`;
     div.addEventListener("click", () => selectOption(q.id, letter));
     optionsList.appendChild(div);
   });
@@ -133,7 +177,6 @@ function updateStats() {
   const answeredCount = Object.values(answers).filter(a => a).length;
   const notAnswered = questions.length - answeredCount;
   statNotAnswered.textContent = notAnswered;
-  // correct/incorrect only known after submit; keep at 0 during attempt
 }
 
 // ── Navigation ──────────────────────────────────────────────────────────
@@ -147,7 +190,7 @@ nextBtn.addEventListener("click", () => {
   if (currentIndex < questions.length - 1) {
     renderQuestion(currentIndex + 1);
   } else {
-    submitQuiz();
+    openConfirmSubmit();
   }
   updateGridHighlight();
 });
@@ -167,7 +210,21 @@ backBtn.addEventListener("click", () => {
   window.location.href = "/";
 });
 
-submitBtn.addEventListener("click", submitQuiz);
+// ── Submit confirmation ─────────────────────────────────────────────────
+submitBtn.addEventListener("click", openConfirmSubmit);
+
+function openConfirmSubmit() {
+  confirmSubmitModal.classList.remove("hidden");
+}
+
+confirmNoBtn.addEventListener("click", () => {
+  confirmSubmitModal.classList.add("hidden");
+});
+
+confirmYesBtn.addEventListener("click", () => {
+  confirmSubmitModal.classList.add("hidden");
+  submitQuiz();
+});
 
 // ── Submit / Results ────────────────────────────────────────────────────
 async function submitQuiz() {
@@ -175,13 +232,14 @@ async function submitQuiz() {
   const [h, m, s] = timeTakenStr.split(":").map(Number);
   const totalSeconds = h * 3600 + m * 60 + s;
 
-  const res = await fetch(`/api/submit/${QUIZ_ID}`, {
+  const res = await fetch(`/api/submit/${encodeURIComponent(QUIZ_ID)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       answers,
       time_taken_seconds: totalSeconds,
       user_id: getUserId(),
+      name: userName,
     }),
   });
   const data = await res.json();
@@ -190,13 +248,17 @@ async function submitQuiz() {
     return;
   }
 
+  lastResult = data;
+  lastResult.time_taken_str = timeTakenStr;
   solutionsData = data.solutions;
 
-  scoreValue.textContent = `${data.correct}/${data.total}`;
+  resName.textContent = userName;
+  scoreValue.textContent = `${data.marks_obtained} / ${data.total_marks}`;
+  scorePercent.textContent = data.percentage + "%";
+  resMessage.textContent = data.message;
   resCorrect.textContent = data.correct;
   resIncorrect.textContent = data.incorrect;
   resSkipped.textContent = data.not_answered;
-  resAccuracy.textContent = data.accuracy + "%";
   resTime.textContent = timeTakenStr;
 
   statCorrect.textContent = data.correct;
@@ -235,26 +297,57 @@ function renderSolutions() {
     const div = document.createElement("div");
     div.className = "solution-item";
 
-    let optsHtml = "";
+    let chipsHtml = "";
     ["A", "B", "C", "D"].forEach((letter) => {
-      if (!(letter in s.options)) return;
       let cls = "";
       if (letter === s.correct) cls = "correct-ans";
       else if (letter === s.chosen && letter !== s.correct) cls = "wrong-chosen";
-      optsHtml += `<div class="solution-opt ${cls}">${letter}) ${s.options[letter]}</div>`;
+      chipsHtml += `<span class="solution-chip ${cls}">${letter}</span>`;
     });
 
     const statusLabel = s.status === "correct" ? "✅ Correct"
       : s.status === "incorrect" ? "❌ Incorrect" : "⏭ Skipped";
 
     div.innerHTML = `
-      <div class="sol-q">Q${s.id}. ${s.text}</div>
-      ${optsHtml}
+      <div class="sol-q">Q${s.id}</div>
+      <img class="sol-image" src="${s.image_url}" alt="Question ${s.id}">
+      <div class="solution-chips">${chipsHtml}</div>
       <div style="margin-top:8px; font-size:12px; color:#8a8fae;">${statusLabel}</div>
     `;
     solutionsListEl.appendChild(div);
   });
 }
 
-// ── Boot ────────────────────────────────────────────────────────────────
-loadQuiz();
+// ── Download score (.txt) ───────────────────────────────────────────────
+downloadScoreBtn.addEventListener("click", () => {
+  if (!lastResult) return;
+
+  const content = [
+    `SmartyMS Quiz Score Card`,
+    `========================`,
+    `Quiz: ${QUIZ_TITLE}`,
+    `Name: ${lastResult.name}`,
+    ``,
+    `Total Questions: ${lastResult.total}`,
+    `Correct: ${lastResult.correct}`,
+    `Incorrect: ${lastResult.incorrect}`,
+    `Skipped: ${lastResult.not_answered}`,
+    ``,
+    `Total Marks: ${lastResult.total_marks}`,
+    `Marks Obtained: ${lastResult.marks_obtained}`,
+    `Percentage: ${lastResult.percentage}%`,
+    `Time Taken: ${lastResult.time_taken_str}`,
+    ``,
+    lastResult.message,
+  ].join("\n");
+
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${QUIZ_ID}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
