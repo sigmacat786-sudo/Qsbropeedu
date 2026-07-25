@@ -47,12 +47,55 @@
             <span id="dropzoneText">📄 PDF file yahan choose karo (koi question limit nahi)</span>
           </label>
 
+          <div id="namePreviewSection" class="name-row hidden">
+            <div class="name-info">
+              <span class="name-label">Original Name:</span>
+              <span id="displayFileName" class="name-value"></span>
+            </div>
+            <button type="button" id="copyFileNameBtn" class="icon-btn" title="Copy">📋</button>
+            <button type="button" id="editFileNameBtn" class="icon-btn" title="Edit">✏️</button>
+          </div>
+
           <button type="submit" id="generateBtn" class="btn btn-primary" disabled>
             ⚡ GENERATE QUIZ
           </button>
         </form>
 
         <div id="statusBox" class="status-box hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Edit filename: confirmation step ─────────────────────────────── -->
+  <div id="editConfirmModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Are you Sure to Edit File Name🙈?</h2>
+      <div class="modal-actions">
+        <button id="editConfirmYes" class="btn btn-primary">Yes</button>
+        <button id="editConfirmNo" class="btn btn-ghost">No</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Edit filename: actual edit form ─────────────────────────────── -->
+  <div id="editNameModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Edit File Name</h2>
+
+      <div class="info-row">
+        <div class="info-text">
+          <span class="info-label">Original Name</span>
+          <span id="editOriginalNameText" class="info-value"></span>
+        </div>
+      </div>
+
+      <label class="gate-label" for="editedNameInput">Edited Name:</label>
+      <input type="text" id="editedNameInput" class="login-input" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <p id="editNameError" class="gate-error hidden"></p>
+
+      <div class="modal-actions">
+        <button id="saveEditedNameBtn" class="btn btn-blue btn-sm">Save ✅</button>
+        <button id="cancelEditedNameBtn" class="btn btn-ghost btn-sm">Cancel ❌</button>
       </div>
     </div>
   </div>
