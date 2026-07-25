@@ -15,7 +15,7 @@ from utils.pdf_parser import extract_questions_from_pdf
 # domain (wherever this admin/upload service itself is deployed, e.g.
 # smartyms-toxic-quiz-system.onrender.com) never leaks into shared links.
 # To change it later, edit ONLY this one line:
-PUBLIC_PLAY_BASE_URL = "https://learnwithpw-recorded.onrender.com"
+PUBLIC_PLAY_BASE_URL = "https://smartyms-harsh-quiz-system.onrender.com"
 
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "/tmp/smartyms_uploads")
 MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_MB", "500")) * 1024 * 1024  # default 500MB safety cap
