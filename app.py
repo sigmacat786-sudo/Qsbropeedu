@@ -1,4 +1,6 @@
 import os
+import re
+import unicodedata
 import base64
 import uuid
 from datetime import datetime
@@ -15,7 +17,7 @@ from utils.pdf_parser import extract_questions_from_pdf
 # domain (wherever this admin/upload service itself is deployed, e.g.
 # smartyms-toxic-quiz-system.onrender.com) never leaks into shared links.
 # To change it later, edit ONLY this one line:
-PUBLIC_PLAY_BASE_URL = "https://smartyms-harsh-quiz-system.onrender.com"
+PUBLIC_PLAY_BASE_URL = "https://learnwithpw-recorded.onrender.com"
 
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "/tmp/smartyms_uploads")
 MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_MB", "500")) * 1024 * 1024  # default 500MB safety cap
@@ -35,17 +37,38 @@ MARK_INCORRECT = -1
 MARK_SKIPPED = 0
 
 
+def _sanitize_quiz_id(name: str) -> str:
+    """
+    Turns a filename (or user-edited name) into a URL-safe quiz id:
+    spaces become hyphens, unsafe characters are dropped, capped at 100 chars.
+    Uses Unicode categories (not \\w) so combining marks used by scripts
+    like Hindi (e.g. matras in "उसने") are correctly kept, not stripped.
+    """
+    name = (name or "").strip()
+    name = re.sub(r"\s+", "-", name)
+    kept = []
+    for ch in name:
+        if ch in ("-", "_"):
+            kept.append(ch)
+            continue
+        category = unicodedata.category(ch)  # 'Lx'=letter, 'Mx'=mark, 'Nx'=number
+        if category[0] in ("L", "M", "N"):
+            kept.append(ch)
+        # anything else (currency/other symbols, punctuation, emoji) is dropped
+    return "".join(kept)[:100]
+
+
 def get_performance_message(pct: float) -> str:
     if pct <= 25:
-        return "Every expert was once a beginner—keep learning and never give up💪!"
+        return "Every expert was once a beginner—keep learning and never give up! 💪"
     elif pct <= 50:
-        return "Good effort! Keep practicing, and you will see great improvement📚!"
+        return "Good effort! Keep practicing, and you'll see great improvement. 📚"
     elif pct <= 75:
-        return "Nice progress! You're getting stronger with every step🚀."
+        return "Nice progress! You're getting stronger with every step. 🚀"
     elif pct <= 90:
-        return "Excellent work! You're very close to mastering this topic🌟."
+        return "Excellent work! You're very close to mastering this topic. 🌟"
     else:
-        return "Outstanding! You've truly mastered this quiz—keep shining 🏆."
+        return "Outstanding! You've truly mastered this quiz—keep shining! 🏆"
 
 
 # ─── Page: Upload (this is our "index.html" landing page) ─────────────────
@@ -67,10 +90,16 @@ def upload():
     if not file.filename.lower().endswith(".pdf"):
         return jsonify({"ok": False, "error": "Only PDF files are supported"}), 400
 
-    # The quiz id used in the shareable link is the ORIGINAL filename
-    # (without the .pdf extension), exactly as requested — not a random id.
+    # The quiz id used in the shareable link is derived from the filename
+    # (without .pdf), OR from the user-edited name if they changed it on
+    # the upload page — spaces are auto-converted to hyphens either way
+    # since URLs can't contain raw spaces.
     original_name = file.filename
-    quiz_id = original_name.rsplit(".", 1)[0].strip()
+    desired_name = (request.form.get("desired_name") or "").strip()
+    if desired_name:
+        quiz_id = _sanitize_quiz_id(desired_name)
+    else:
+        quiz_id = _sanitize_quiz_id(original_name.rsplit(".", 1)[0])
     if not quiz_id:
         return jsonify({"ok": False, "error": "Invalid filename"}), 400
 
