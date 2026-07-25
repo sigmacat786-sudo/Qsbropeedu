@@ -397,3 +397,35 @@ body {
   color: #2b6fef;
   text-align: center;
 }
+
+/* ── Filename preview + edit (added) ──────────────────────────────────── */
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f7f7fc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+.name-info { flex: 1; min-width: 0; }
+.name-label { display: block; font-size: 11px; color: #8a8fae; text-transform: uppercase; }
+.name-value {
+  display: block;
+  font-size: 13px;
+  color: #33364a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.icon-btn {
+  border: none;
+  background: #eef0fa;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
