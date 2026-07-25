@@ -37,15 +37,15 @@ MARK_SKIPPED = 0
 
 def get_performance_message(pct: float) -> str:
     if pct <= 25:
-        return "Every expert was once a beginner—keep learning and never give up! 💪"
+        return "Every expert was once a beginner—keep learning and never give up💪!"
     elif pct <= 50:
-        return "Good effort! Keep practicing, and you'll see great improvement. 📚"
+        return "Good effort! Keep practicing, and you will see great improvement📚!"
     elif pct <= 75:
-        return "Nice progress! You're getting stronger with every step. 🚀"
+        return "Nice progress! You're getting stronger with every step🚀."
     elif pct <= 90:
-        return "Excellent work! You're very close to mastering this topic. 🌟"
+        return "Excellent work! You're very close to mastering this topic🌟."
     else:
-        return "Outstanding! You've truly mastered this quiz—keep shining! 🏆"
+        return "Outstanding! You've truly mastered this quiz—keep shining 🏆."
 
 
 # ─── Page: Upload (this is our "index.html" landing page) ─────────────────
