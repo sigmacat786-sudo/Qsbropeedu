@@ -94,7 +94,7 @@ def _page_text(page, pdf_path, page_index, page_img=None):
 # ─── Word-level positions (with OCR fallback) for a single page ───────
 def _page_words_pixel_space(page, pdf_path, page_index, page_img):
     """
-    Returns list of {"text","x0","top","bottom"} in PIXEL coordinates
+    Returns list of {"text","x0","x1","top","bottom"} in PIXEL coordinates
     (matching page_img's resolution).
     """
     scale = DPI / 72.0
@@ -103,7 +103,8 @@ def _page_words_pixel_space(page, pdf_path, page_index, page_img):
 
     if total_chars >= MIN_TEXT_CHARS_PER_PAGE or not OCR_AVAILABLE or page_img is None:
         return [
-            {"text": w["text"], "x0": w["x0"] * scale, "top": w["top"] * scale, "bottom": w["bottom"] * scale}
+            {"text": w["text"], "x0": w["x0"] * scale, "x1": w["x1"] * scale,
+             "top": w["top"] * scale, "bottom": w["bottom"] * scale}
             for w in pl_words
         ]
 
@@ -116,20 +117,23 @@ def _page_words_pixel_space(page, pdf_path, page_index, page_img):
                 continue
             top = float(data["top"][i])
             height = float(data["height"][i])
-            words.append({"text": txt, "x0": float(data["left"][i]), "top": top, "bottom": top + height})
+            left = float(data["left"][i])
+            width = float(data["width"][i])
+            words.append({"text": txt, "x0": left, "x1": left + width, "top": top, "bottom": top + height})
         if words:
             return words
     except Exception:
         pass
     return [
-        {"text": w["text"], "x0": w["x0"] * scale, "top": w["top"] * scale, "bottom": w["bottom"] * scale}
+        {"text": w["text"], "x0": w["x0"] * scale, "x1": w["x1"] * scale,
+         "top": w["top"] * scale, "bottom": w["bottom"] * scale}
         for w in pl_words
     ]
 
 
 # ─── Group words into visual lines ──────────────────────────────────────
 def _cluster_lines(words):
-    """Returns list of {"top","bottom","text"} sorted top-to-bottom."""
+    """Returns list of {"top","bottom","x0","x1","text"} sorted top-to-bottom."""
     if not words:
         return []
     sorted_words = sorted(words, key=lambda w: (w["top"], w["x0"]))
@@ -158,7 +162,9 @@ def _cluster_lines(words):
     for top, bottom, line_words in lines_raw:
         ordered = sorted(line_words, key=lambda w: w["x0"])
         text = " ".join(w["text"] for w in ordered)
-        result.append({"top": top, "bottom": bottom, "text": text})
+        x0 = min(w["x0"] for w in ordered)
+        x1 = max(w["x1"] for w in ordered)
+        result.append({"top": top, "bottom": bottom, "x0": x0, "x1": x1, "text": text})
     return result
 
 
@@ -186,16 +192,6 @@ def _get_blocks_for_page(pdf_path, page, page_index):
     img_w, img_h = page_img.size
     words = _page_words_pixel_space(page, pdf_path, page_index, page_img)
 
-    # Page-wide footer detection FIRST (before splitting into columns). The
-    # footer is horizontally centered, so it can straddle the column split —
-    # detecting it once across the whole page and clipping both columns to
-    # the same y-position avoids leaking half of it into either column.
-    page_lines = _cluster_lines(words)
-    footer_top_y = None
-    for ln in page_lines:
-        if PROMO_TEXT_RE.search(ln["text"]):
-            footer_top_y = ln["top"] if footer_top_y is None else min(footer_top_y, ln["top"])
-
     right_words = [w for w in words if w["x0"] >= img_w / 2]
     left_words = [w for w in words if w["x0"] < img_w / 2]
 
@@ -204,23 +200,58 @@ def _get_blocks_for_page(pdf_path, page, page_index):
     else:
         col_defs = [(words, 0, img_w)]
 
-    blocks = []
-    for col_words, cx0, cx1 in col_defs:
-        lines = _cluster_lines(col_words)
-
-        # Per-column safety net (in case the footer fragment on THIS column
-        # alone also matches on its own).
-        promo_idx = len(lines)
-        for i, ln in enumerate(lines):
+    # Footer detection: search each column's OWN lines independently for the
+    # promo text (never merge words across columns for this — two unrelated
+    # same-row questions from different columns must never be treated as
+    # one combined line, that's exactly the earlier bug this avoids).
+    footer_top_y = None
+    for col_words, _cx0, _cx1 in col_defs:
+        for ln in _cluster_lines(col_words):
             if PROMO_TEXT_RE.search(ln["text"]):
-                promo_idx = i
-                break
-        usable_lines = lines[:promo_idx]
+                footer_top_y = ln["top"] if footer_top_y is None else min(footer_top_y, ln["top"])
 
-        # Page-wide clip: drop any line at/after the detected footer y-position.
+    # A page-wide title/subject/topic banner only ever appears on the FIRST
+    # page of a sheet, split across both columns by the x0<width/2 rule,
+    # always sitting ABOVE where the left column's first real question
+    # begins. This rule is intentionally scoped to page_index == 0 only —
+    # on later pages, a later column can legitimately start higher or
+    # lower than the other purely because of natural content-length
+    # variation, and stripping "everything above the other column's first
+    # question" there would wrongly delete real questions.
+    first_col_first_q_top = None
+    if page_index == 0:
+        first_col_lines_probe = _cluster_lines(col_defs[0][0])
+        for ln in first_col_lines_probe:
+            if _detect_qstart(ln["text"]) is not None:
+                first_col_first_q_top = ln["top"]
+                break
+
+    # The small recurring corner badge (e.g. a subject/exam tag shown on
+    # every page) is easy to misidentify as carry-over text since it's
+    # short and sits near the top. It's safe to drop outright: a bare
+    # 3-8 letter all-caps word floating alone is never genuine question
+    # content.
+    def _is_corner_badge(line_text):
+        t = line_text.strip()
+        return bool(re.fullmatch(r"[A-Z]{3,8}", t))
+
+    blocks = []
+    for col_idx, (col_words, cx0, cx1) in enumerate(col_defs):
+        lines = _cluster_lines(col_words)
+        usable_lines = []
+        removed_header_bottom = 0.0
+        for ln in lines:
+            if _is_corner_badge(ln["text"]):
+                removed_header_bottom = max(removed_header_bottom, ln["bottom"])
+                continue
+            if col_idx > 0 and first_col_first_q_top is not None and ln["top"] < first_col_first_q_top - 2:
+                removed_header_bottom = max(removed_header_bottom, ln["bottom"])
+                continue
+            usable_lines.append(ln)
+
         if footer_top_y is not None:
-            usable_lines = [ln for ln in usable_lines if ln["top"] < footer_top_y - 2]
-            usable_bottom = footer_top_y - 2
+            usable_bottom = min(footer_top_y, img_h)
+            usable_lines = [ln for ln in usable_lines if ln["top"] < usable_bottom]
         else:
             usable_bottom = img_h
 
@@ -231,6 +262,13 @@ def _get_blocks_for_page(pdf_path, page, page_index):
             "cx1": cx1,
             "img_h": img_h,
             "usable_bottom": usable_bottom,
+            # Safe top for a CONTINUATION crop: right after any removed
+            # header banner (so leading diagrams aren't re-including the
+            # banner pixels), or the true column top (0) everywhere else —
+            # this is what lets a leading diagram (no text on it at all,
+            # so it never appears in `lines`) still get captured instead
+            # of the crop starting late at the first text line.
+            "content_safe_top": removed_header_bottom,
             "page": page_index + 1,
         })
     return blocks
@@ -288,7 +326,7 @@ def _extract_all_questions(pdf_path, pdf, question_page_count):
             # ── Carry-over lines (before this block's first Q-start) ──
             if first_start_idx > 0:
                 if pending is not None:
-                    top = lines[0]["top"]
+                    top = block["content_safe_top"]
                     bottom_idx = first_start_idx - 1
                     bottom = lines[bottom_idx]["bottom"] + pad
                     next_start_top = lines[first_start_idx]["top"] if start_positions else block["usable_bottom"]
