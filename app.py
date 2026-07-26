@@ -17,7 +17,7 @@ from utils.pdf_parser import extract_questions_from_pdf
 # domain (wherever this admin/upload service itself is deployed, e.g.
 # smartyms-toxic-quiz-system.onrender.com) never leaks into shared links.
 # To change it later, edit ONLY this one line:
-PUBLIC_PLAY_BASE_URL = "https://smartyms-harsh-quiz-system.onrender.com"
+PUBLIC_PLAY_BASE_URL = "https://learnwithpw-recorded.onrender.com"
 
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "/tmp/smartyms_uploads")
 MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_MB", "500")) * 1024 * 1024  # default 500MB safety cap
@@ -31,6 +31,7 @@ db = get_db()
 quizzes_col = db["quizzes"]
 attempts_col = db["attempts"]
 images_col = db["question_images"]
+drafts_col = db["drafts"]
 
 MARK_CORRECT = 4
 MARK_INCORRECT = -1
@@ -124,49 +125,305 @@ def upload():
             "error": "Koi question detect nahi hua. PDF me Q1, Q2... (A)(B)(C)(D) format hona chahiye."
         }), 422
 
-    # Re-uploading the same filename replaces the previous quiz + its images
-    images_col.delete_many({"quiz_id": quiz_id})
-    quizzes_col.delete_one({"_id": quiz_id})
-
-    question_refs = []
+    # Store this as a DRAFT (not a live quiz yet) — the admin reviews/edits
+    # it on the new Edit Panel before anything becomes a real shareable
+    # quiz. quiz_id_hint carries the chosen name forward as the default
+    # final quiz id once they hit "Submit & Generate Quiz".
+    draft_id = uuid.uuid4().hex[:12]
+    question_list = []
     image_docs = []
     for q in questions:
-        image_id = f"{quiz_id}::{q['id']}"
+        image_id = f"draft::{draft_id}::{q['id']}"
         image_docs.append({
             "_id": image_id,
-            "quiz_id": quiz_id,
             "data": q["image_base64"],
             "mime": q["mime"],
         })
-        question_refs.append({
+        question_list.append({
             "id": q["id"],
             "image_id": image_id,
             "correct": q.get("correct"),
+            "options_note": None,
         })
 
     if image_docs:
         images_col.insert_many(image_docs)
 
-    quiz_doc = {
-        "_id": quiz_id,
+    draft_doc = {
+        "_id": draft_id,
+        "quiz_id_hint": quiz_id,
         "title": quiz_id,
         "source_filename": original_name,
         "created_at": datetime.utcnow(),
-        "total_questions": len(question_refs),
-        "questions": question_refs,
-        "meta": meta,
+        "questions": question_list,
     }
-    quizzes_col.insert_one(quiz_doc)
-
-    play_link = f"{PUBLIC_PLAY_BASE_URL}/play?v={quiz_id}"
+    drafts_col.insert_one(draft_doc)
 
     return jsonify({
         "ok": True,
-        "quiz_id": quiz_id,
-        "title": quiz_doc["title"],
-        "total_questions": len(question_refs),
-        "play_link": play_link,
+        "draft_id": draft_id,
+        "total_questions": len(question_list),
     })
+
+
+# ─── Page: Edit Panel (review/fix everything before generating the link) ──
+@app.route("/edit/<path:draft_id>")
+def edit_panel(draft_id):
+    draft = drafts_col.find_one({"_id": draft_id}, {"title": 1})
+    if not draft:
+        return "Draft not found (already generated, or expired). Please upload again.", 404
+    return render_template("edit.html", draft_id=draft_id, title=draft["title"])
+
+
+# ─── API: fetch full draft for the edit panel ──────────────────────────────
+@app.route("/api/draft/<path:draft_id>")
+def api_get_draft(draft_id):
+    draft = drafts_col.find_one({"_id": draft_id})
+    if not draft:
+        return jsonify({"ok": False, "error": "Draft not found"}), 404
+
+    questions = sorted(draft["questions"], key=lambda q: q["id"])
+    out = [{
+        "id": q["id"],
+        "image_url": url_for("api_qimage", image_id=q["image_id"]),
+        "correct": q.get("correct"),
+        "options_note": q.get("options_note"),
+    } for q in questions]
+
+    return jsonify({"ok": True, "title": draft["title"], "questions": out})
+
+
+# ─── API: change a question's index number (with duplicate check) ─────────
+@app.route("/api/draft/<path:draft_id>/question/<int:qid>/reindex", methods=["POST"])
+def api_draft_reindex(draft_id, qid):
+    data = request.get_json(force=True) or {}
+    new_id = data.get("new_id")
+    if not isinstance(new_id, int) or new_id <= 0:
+        return jsonify({"ok": False, "error": "Index must be a positive whole number"}), 400
+
+    draft = drafts_col.find_one({"_id": draft_id})
+    if not draft:
+        return jsonify({"ok": False, "error": "Draft not found"}), 404
+
+    questions = draft["questions"]
+    if new_id != qid and any(q["id"] == new_id for q in questions):
+        return jsonify({"ok": False, "error": f"Question {new_id} already exists"}), 409
+
+    target = next((q for q in questions if q["id"] == qid), None)
+    if not target:
+        return jsonify({"ok": False, "error": "Question not found"}), 404
+    target["id"] = new_id
+
+    drafts_col.replace_one({"_id": draft_id}, draft)
+    return jsonify({"ok": True})
+
+
+# ─── API: nudge a question up/down (swaps index with its neighbour) ───────
+@app.route("/api/draft/<path:draft_id>/question/<int:qid>/move", methods=["POST"])
+def api_draft_move(draft_id, qid):
+    data = request.get_json(force=True) or {}
+    direction = data.get("direction")
+
+    draft = drafts_col.find_one({"_id": draft_id})
+    if not draft:
+        return jsonify({"ok": False, "error": "Draft not found"}), 404
+
+    questions = sorted(draft["questions"], key=lambda q: q["id"])
+    ids = [q["id"] for q in questions]
+    if qid not in ids:
+        return jsonify({"ok": False, "error": "Question not found"}), 404
+
+    idx = ids.index(qid)
+    swap_idx = idx - 1 if direction == "up" else idx + 1
+    if swap_idx < 0 or swap_idx >= len(questions):
+        return jsonify({"ok": False, "error": "Can't move further"}), 400
+
+    questions[idx]["id"], questions[swap_idx]["id"] = questions[swap_idx]["id"], questions[idx]["id"]
+    draft["questions"] = questions
+    drafts_col.replace_one({"_id": draft_id}, draft)
+    return jsonify({"ok": True})
+
+
+# ─── API: replace a question's image ───────────────────────────────────────
+@app.route("/api/draft/<path:draft_id>/question/<int:qid>/image", methods=["POST"])
+def api_draft_update_image(draft_id, qid):
+    if "image" not in request.files:
+        return jsonify({"ok": False, "error": "No image received"}), 400
+    file = request.files["image"]
+    if file.filename == "" or not (file.content_type or "").startswith("image/"):
+        return jsonify({"ok": False, "error": "Please upload an image file"}), 400
+
+    draft = drafts_col.find_one({"_id": draft_id})
+    if not draft:
+        return jsonify({"ok": False, "error": "Draft not found"}), 404
+
+    target = next((q for q in draft["questions"] if q["id"] == qid), None)
+    if not target:
+        return jsonify({"ok": False, "error": "Question not found"}), 404
+
+    raw = file.read()
+    b64 = base64.b64encode(raw).decode("ascii")
+    mime = file.content_type or "image/jpeg"
+    images_col.update_one({"_id": target["image_id"]}, {"$set": {"data": b64, "mime": mime}}, upsert=True)
+
+    return jsonify({"ok": True, "image_url": url_for("api_qimage", image_id=target["image_id"])})
+
+
+# ─── API: edit the correct-answer key for one question ────────────────────
+@app.route("/api/draft/<path:draft_id>/question/<int:qid>/answer", methods=["POST"])
+def api_draft_update_answer(draft_id, qid):
+    data = request.get_json(force=True) or {}
+    correct = data.get("correct")
+    if correct not in ("A", "B", "C", "D", None):
+        return jsonify({"ok": False, "error": "Invalid answer"}), 400
+
+    draft = drafts_col.find_one({"_id": draft_id})
+    if not draft:
+        return jsonify({"ok": False, "error": "Draft not found"}), 404
+
+    target = next((q for q in draft["questions"] if q["id"] == qid), None)
+    if not target:
+        return jsonify({"ok": False, "error": "Question not found"}), 404
+    target["correct"] = correct
+
+    drafts_col.replace_one({"_id": draft_id}, draft)
+    return jsonify({"ok": True})
+
+
+# ─── API: edit the options note (e.g. mark a question as subjective) ──────
+@app.route("/api/draft/<path:draft_id>/question/<int:qid>/options-note", methods=["POST"])
+def api_draft_update_options_note(draft_id, qid):
+    data = request.get_json(force=True) or {}
+    note = (data.get("options_note") or "").strip()[:300]
+
+    draft = drafts_col.find_one({"_id": draft_id})
+    if not draft:
+        return jsonify({"ok": False, "error": "Draft not found"}), 404
+
+    target = next((q for q in draft["questions"] if q["id"] == qid), None)
+    if not target:
+        return jsonify({"ok": False, "error": "Question not found"}), 404
+    target["options_note"] = note or None
+
+    drafts_col.replace_one({"_id": draft_id}, draft)
+    return jsonify({"ok": True})
+
+
+# ─── API: remove a question from the draft ─────────────────────────────────
+@app.route("/api/draft/<path:draft_id>/question/<int:qid>", methods=["DELETE"])
+def api_draft_delete_question(draft_id, qid):
+    draft = drafts_col.find_one({"_id": draft_id})
+    if not draft:
+        return jsonify({"ok": False, "error": "Draft not found"}), 404
+
+    target = next((q for q in draft["questions"] if q["id"] == qid), None)
+    if not target:
+        return jsonify({"ok": False, "error": "Question not found"}), 404
+
+    draft["questions"] = [q for q in draft["questions"] if q["id"] != qid]
+    drafts_col.replace_one({"_id": draft_id}, draft)
+    images_col.delete_one({"_id": target["image_id"]})
+
+    return jsonify({"ok": True})
+
+
+# ─── API: add a brand-new question to the draft ────────────────────────────
+@app.route("/api/draft/<path:draft_id>/question", methods=["POST"])
+def api_draft_add_question(draft_id):
+    draft = drafts_col.find_one({"_id": draft_id})
+    if not draft:
+        return jsonify({"ok": False, "error": "Draft not found"}), 404
+
+    try:
+        new_id = int(request.form.get("new_id", ""))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Index must be a whole number"}), 400
+    if new_id <= 0:
+        return jsonify({"ok": False, "error": "Index must be a positive whole number"}), 400
+    if any(q["id"] == new_id for q in draft["questions"]):
+        return jsonify({"ok": False, "error": f"Question {new_id} already exists"}), 409
+
+    if "image" not in request.files:
+        return jsonify({"ok": False, "error": "Question image required"}), 400
+    file = request.files["image"]
+    if file.filename == "" or not (file.content_type or "").startswith("image/"):
+        return jsonify({"ok": False, "error": "Please upload an image file"}), 400
+
+    correct = request.form.get("correct") or None
+    if correct not in ("A", "B", "C", "D", None):
+        return jsonify({"ok": False, "error": "Invalid answer"}), 400
+    options_note = (request.form.get("options_note") or "").strip()[:300] or None
+
+    raw = file.read()
+    b64 = base64.b64encode(raw).decode("ascii")
+    mime = file.content_type or "image/jpeg"
+    image_id = f"draft::{draft_id}::{new_id}::{uuid.uuid4().hex[:6]}"
+    images_col.insert_one({"_id": image_id, "data": b64, "mime": mime})
+
+    draft["questions"].append({
+        "id": new_id,
+        "image_id": image_id,
+        "correct": correct,
+        "options_note": options_note,
+    })
+    drafts_col.replace_one({"_id": draft_id}, draft)
+
+    return jsonify({"ok": True, "image_url": url_for("api_qimage", image_id=image_id)})
+
+
+# ─── API: "Submit & Generate Quiz" — turn the draft into a real live quiz ──
+@app.route("/api/draft/<path:draft_id>/finalize", methods=["POST"])
+def api_draft_finalize(draft_id):
+    draft = drafts_col.find_one({"_id": draft_id})
+    if not draft:
+        return jsonify({"ok": False, "error": "Draft not found"}), 404
+    if not draft["questions"]:
+        return jsonify({"ok": False, "error": "Add at least one question before generating"}), 400
+
+    data = request.get_json(silent=True) or {}
+    desired_name = (data.get("desired_name") or "").strip()
+    quiz_id = _sanitize_quiz_id(desired_name) if desired_name else draft["quiz_id_hint"]
+    if not quiz_id:
+        return jsonify({"ok": False, "error": "Invalid quiz name"}), 400
+
+    # Re-generating under the same name replaces the previous live quiz
+    images_col.delete_many({"quiz_id": quiz_id})
+    quizzes_col.delete_one({"_id": quiz_id})
+
+    question_refs = []
+    for q in sorted(draft["questions"], key=lambda x: x["id"]):
+        final_image_id = f"{quiz_id}::{q['id']}"
+        img_doc = images_col.find_one({"_id": q["image_id"]})
+        if img_doc:
+            images_col.update_one(
+                {"_id": final_image_id},
+                {"$set": {"quiz_id": quiz_id, "data": img_doc["data"], "mime": img_doc["mime"]}},
+                upsert=True,
+            )
+        question_refs.append({
+            "id": q["id"],
+            "image_id": final_image_id,
+            "correct": q.get("correct"),
+            "options_note": q.get("options_note"),
+        })
+
+    quiz_doc = {
+        "_id": quiz_id,
+        "title": quiz_id,
+        "source_filename": draft.get("source_filename"),
+        "created_at": datetime.utcnow(),
+        "total_questions": len(question_refs),
+        "questions": question_refs,
+    }
+    quizzes_col.insert_one(quiz_doc)
+
+    # Clean up the now-migrated draft images + the draft document itself
+    for q in draft["questions"]:
+        images_col.delete_one({"_id": q["image_id"]})
+    drafts_col.delete_one({"_id": draft_id})
+
+    play_link = f"{PUBLIC_PLAY_BASE_URL}/play?v={quiz_id}"
+    return jsonify({"ok": True, "quiz_id": quiz_id, "play_link": play_link})
 
 
 # ─── Page: Generated link result page ──────────────────────────────────────
