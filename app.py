@@ -17,7 +17,7 @@ from utils.pdf_parser import extract_questions_from_pdf
 # domain (wherever this admin/upload service itself is deployed, e.g.
 # smartyms-toxic-quiz-system.onrender.com) never leaks into shared links.
 # To change it later, edit ONLY this one line:
-PUBLIC_PLAY_BASE_URL = "https://smartyms-harsh-quiz-system.onrender.com"
+PUBLIC_PLAY_BASE_URL = "https://learnwithpw-recorded.onrender.com"
 
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "/tmp/smartyms_uploads")
 MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_MB", "500")) * 1024 * 1024  # default 500MB safety cap
@@ -459,14 +459,19 @@ def api_quiz(quiz_id):
         return jsonify({"ok": False, "error": "Quiz not found"}), 404
 
     safe_questions = [
-        {"id": q["id"], "image_url": url_for("api_qimage", image_id=q["image_id"])}
+        {
+            "id": q["id"],
+            "image_url": url_for("api_qimage", image_id=q["image_id"]),
+            "options_note": q.get("options_note"),
+        }
         for q in quiz["questions"]
     ]
+    scored_total = sum(1 for q in quiz["questions"] if not q.get("options_note"))
     return jsonify({
         "ok": True,
         "title": quiz["title"],
         "total_questions": quiz["total_questions"],
-        "total_marks": quiz["total_questions"] * MARK_CORRECT,
+        "total_marks": scored_total * MARK_CORRECT,
         "questions": safe_questions,
     })
 
@@ -501,8 +506,17 @@ def api_submit(quiz_id):
         qid = str(q["id"])
         chosen = user_answers.get(qid)
         correct_opt = q.get("correct")
+        options_note = q.get("options_note")
+        is_subjective = bool(options_note)
 
-        if chosen is None or chosen == "":
+        if is_subjective:
+            # Subjective questions have no A/B/C/D to pick, so they can
+            # never be marked correct/incorrect — they simply don't
+            # contribute to the marks total (but still count in the
+            # overall question count).
+            status = "subjective"
+            not_answered += 1
+        elif chosen is None or chosen == "":
             not_answered += 1
             status = "skipped"
         elif correct_opt is not None and chosen == correct_opt:
@@ -518,13 +532,18 @@ def api_submit(quiz_id):
             "chosen": chosen,
             "correct": correct_opt,
             "status": status,
+            "options_note": options_note,
         })
 
     total = quiz["total_questions"]
+    subjective_count = sum(1 for q in quiz["questions"] if q.get("options_note"))
+    scored_total = total - subjective_count
 
-    # NEET marking scheme: +4 correct, -1 incorrect, 0 skipped
-    marks_obtained = (correct * MARK_CORRECT) + (incorrect * MARK_INCORRECT) + (not_answered * MARK_SKIPPED)
-    total_marks = total * MARK_CORRECT
+    # NEET marking scheme: +4 correct, -1 incorrect, 0 skipped/subjective.
+    # total_marks only counts questions that actually have real options —
+    # subjective questions can never add or subtract marks.
+    marks_obtained = (correct * MARK_CORRECT) + (incorrect * MARK_INCORRECT)
+    total_marks = scored_total * MARK_CORRECT
     percentage = round((marks_obtained / total_marks) * 100, 2) if total_marks else 0.0
     message = get_performance_message(percentage)
 
@@ -537,6 +556,7 @@ def api_submit(quiz_id):
         "correct": correct,
         "incorrect": incorrect,
         "not_answered": not_answered,
+        "subjective_count": subjective_count,
         "marks_obtained": marks_obtained,
         "total_marks": total_marks,
         "percentage": percentage,
