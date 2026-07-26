@@ -33,9 +33,9 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 # opening DevTools -> Sources/Resources could read them directly. Now the
 # check happens ONLY here, server-side, via the /login route below. The
 # browser never receives OWNER_NAME / ADMIN_KEYS / VIP_KEYS in any form.
-OWNER_NAME = "ViPxMSvBRO"
-ADMIN_KEYS = ["MS#nEET_X9q!7LvP2", "NeeT$MS_A4r!8QxZ5", "mS@NeeT_K7#vP3Lx9"]
-VIP_KEYS = ["ToXic#ViP_X9q!7LvP2", "tOxic@Vip_A4r!8QxZ5", "ToXic$ViP_K7#vP3Lx9"]
+OWNER_NAME = "ViPvxMS10BRO"
+ADMIN_KEYS = ["MS#Admin_R4!xQ8Lp7", "Core$MS_N6v!T2Zk9", "mS@Root_P8#Lm5Qx3"]
+VIP_KEYS = ["ToXic#ViPR8m!4QxL7", "tOxic@VipN5v!9ZpK2", "ToXic$ViPX7#rT3Lm8"]
 
 # SECRET_KEY signs the session cookie. Set a SECRET_KEY env var on Render
 # so admin sessions survive restarts/redeploys — without it, a fallback is
