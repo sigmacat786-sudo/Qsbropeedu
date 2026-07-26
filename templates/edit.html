@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editing: {{ title }} — SmartyMS Quiz</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="topbar">
+  <button id="backBtn" class="link-btn">← Back to Upload</button>
+  <div class="edit-title-badge">Editing Quiz: <strong>{{ title }}</strong></div>
+</div>
+
+<div class="quiz-layout">
+
+  <!-- LEFT: all question cards, one page -->
+  <div class="edit-questions-col" id="questionsCol">
+    <div class="add-q-card" data-position="0">
+      <span>➕ Add Question Here (at the top)</span>
+    </div>
+    <!-- question cards injected here by edit.js -->
+    <p id="loadingMsg" class="edit-loading">Loading draft…</p>
+  </div>
+
+  <!-- RIGHT: questions grid (jump + quick preview of numbering) -->
+  <div class="side-panel">
+    <p class="questions-label">QUESTIONS</p>
+    <div id="questionGrid" class="question-grid"></div>
+    <p class="grid-hint">Tap a number to jump. Use ✏️ on a card to renumber, or ▲▼ to nudge it.</p>
+  </div>
+</div>
+
+<div class="finalize-bar">
+  <button id="finalizeBtn" class="btn btn-primary">Submit &amp; Generate Quiz 🚀</button>
+</div>
+
+<!-- ── Edit Index Number modal ─────────────────────────────────────────── -->
+<div id="editIndexModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Edit Question Number</h2>
+    <input type="number" id="editIndexInput" class="login-input" min="1" step="1" inputmode="numeric">
+    <p id="editIndexError" class="gate-error hidden"></p>
+    <div class="modal-actions">
+      <button id="saveIndexBtn" class="btn btn-blue btn-sm">Save ✅</button>
+      <button id="cancelIndexBtn" class="btn btn-ghost btn-sm">Cancel ❌</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Options Note modal ─────────────────────────────────────────── -->
+<div id="editNoteModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Edit Options Note</h2>
+    <p class="note-hint">Leave blank for a normal 4-option (A/B/C/D) question. Or write a short note — e.g. "This question is subjective, no fixed options" — for subjective/descriptive questions.</p>
+    <textarea id="editNoteInput" class="note-textarea" maxlength="300" rows="4"></textarea>
+    <div class="modal-actions">
+      <button id="saveNoteBtn" class="btn btn-blue btn-sm">Save ✅</button>
+      <button id="cancelNoteBtn" class="btn btn-ghost btn-sm">Cancel ❌</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Answer Key modal ───────────────────────────────────────────── -->
+<div id="editAnswerModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Edit Answer</h2>
+    <div class="answer-pick-row">
+      <button type="button" class="answer-pick" data-val="A">A</button>
+      <button type="button" class="answer-pick" data-val="B">B</button>
+      <button type="button" class="answer-pick" data-val="C">C</button>
+      <button type="button" class="answer-pick" data-val="D">D</button>
+      <button type="button" class="answer-pick answer-pick-none" data-val="">None / Subjective</button>
+    </div>
+    <div class="modal-actions">
+      <button id="cancelAnswerBtn" class="btn btn-ghost btn-sm">Cancel ❌</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Question modal ──────────────────────────────────────────────── -->
+<div id="addQuestionModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Add Question</h2>
+
+    <label class="gate-label" for="addQIndexInput">Question Number</label>
+    <input type="number" id="addQIndexInput" class="login-input" min="1" step="1" inputmode="numeric">
+
+    <label class="gate-label" for="addQImageInput">Question Image</label>
+    <input type="file" id="addQImageInput" class="login-input" accept="image/*">
+
+    <label class="gate-label">Correct Answer (optional)</label>
+    <div class="answer-pick-row">
+      <button type="button" class="answer-pick add-q-answer-pick" data-val="A">A</button>
+      <button type="button" class="answer-pick add-q-answer-pick" data-val="B">B</button>
+      <button type="button" class="answer-pick add-q-answer-pick" data-val="C">C</button>
+      <button type="button" class="answer-pick add-q-answer-pick" data-val="D">D</button>
+      <button type="button" class="answer-pick add-q-answer-pick answer-pick-none selected" data-val="">None</button>
+    </div>
+
+    <label class="gate-label" for="addQNoteInput">Options Note (optional)</label>
+    <textarea id="addQNoteInput" class="note-textarea" maxlength="300" rows="3" placeholder="Leave blank for normal A/B/C/D options"></textarea>
+
+    <p id="addQError" class="gate-error hidden"></p>
+
+    <div class="modal-actions">
+      <button id="saveAddQBtn" class="btn btn-blue btn-sm">Add ✅</button>
+      <button id="cancelAddQBtn" class="btn btn-ghost btn-sm">Cancel ❌</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm delete modal ────────────────────────────────────────────── -->
+<div id="confirmDeleteModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Remove this question?</h2>
+    <p class="note-hint">This can't be undone.</p>
+    <div class="modal-actions">
+      <button id="confirmDeleteYes" class="btn btn-primary">Yes, Remove</button>
+      <button id="confirmDeleteNo" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm finalize modal ──────────────────────────────────────────── -->
+<div id="confirmFinalizeModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Generate the final quiz link now?</h2>
+    <p class="note-hint">All edits (images, answers, numbering, notes) will be used. This becomes the live quiz students attend.</p>
+    <div class="modal-actions">
+      <button id="confirmFinalizeYes" class="btn btn-primary">Yes, Generate</button>
+      <button id="confirmFinalizeNo" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+  const DRAFT_ID = {{ draft_id | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/edit.js') }}"></script>
+</body>
+</html>
