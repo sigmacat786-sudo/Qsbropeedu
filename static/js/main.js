@@ -158,7 +158,7 @@ uploadForm.addEventListener("submit", async (e) => {
   if (!pdfInput.files.length) return;
 
   generateBtn.disabled = true;
-  generateBtn.textContent = "⏳ Generating...";
+  generateBtn.textContent = "⏳ Processing...";
   statusBox.classList.add("hidden");
 
   const formData = new FormData();
@@ -174,20 +174,20 @@ uploadForm.addEventListener("submit", async (e) => {
       statusBox.classList.remove("hidden");
       statusBox.classList.add("error");
       generateBtn.disabled = false;
-      generateBtn.textContent = "⚡ GENERATE QUIZ";
+      generateBtn.textContent = "NEXT ⚡";
       return;
     }
 
-    showToast("Yummy 😋 Your Quiz Link is Generated Successfully ✅");
+    showToast("Quiz draft ready — ab review/edit kar lo ✅");
     setTimeout(() => {
-      window.location.href = "/generated/" + data.quiz_id;
-    }, 1200);
+      window.location.href = "/edit/" + data.draft_id;
+    }, 900);
 
   } catch (err) {
     statusBox.textContent = "❌ Something went wrong: " + err.message;
     statusBox.classList.remove("hidden");
     statusBox.classList.add("error");
     generateBtn.disabled = false;
-    generateBtn.textContent = "⚡ GENERATE QUIZ";
+    generateBtn.textContent = "NEXT ⚡";
   }
 });
