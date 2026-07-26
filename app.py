@@ -495,12 +495,12 @@ def api_draft_finalize(draft_id):
 # ─── Page: Generated link result page ──────────────────────────────────────
 @app.route("/generated/<path:quiz_id>")
 def generated(quiz_id):
-    quiz = quizzes_col.find_one({"_id": quiz_id}, {"title": 1, "total_questions": 1})
+    quiz = quizzes_col.find_one({"_id": quiz_id}, {"title": 1, "questions": 1})
     if not quiz:
         return redirect(url_for("index"))
     play_link = f"{PUBLIC_PLAY_BASE_URL}/play?v={quiz_id}"
     return render_template("generated.html", title=quiz["title"],
-                            total_questions=quiz["total_questions"],
+                            total_questions=len(quiz["questions"]),
                             play_link=play_link)
 
 
@@ -510,11 +510,11 @@ def play():
     quiz_id = request.args.get("v")
     if not quiz_id:
         return "Missing quiz id (?v=...)", 400
-    quiz = quizzes_col.find_one({"_id": quiz_id}, {"title": 1, "total_questions": 1})
+    quiz = quizzes_col.find_one({"_id": quiz_id}, {"title": 1, "questions": 1})
     if not quiz:
         return "Quiz not found. Link galat hai ya quiz delete ho gaya.", 404
     return render_template("play.html", quiz_id=quiz_id, title=quiz["title"],
-                            total_questions=quiz["total_questions"])
+                            total_questions=len(quiz["questions"]))
 
 
 # ─── API: Fetch quiz questions (image references only, answers hidden) ────
@@ -536,7 +536,7 @@ def api_quiz(quiz_id):
     return jsonify({
         "ok": True,
         "title": quiz["title"],
-        "total_questions": quiz["total_questions"],
+        "total_questions": len(quiz["questions"]),
         "total_marks": scored_total * MARK_CORRECT,
         "questions": safe_questions,
     })
@@ -601,7 +601,7 @@ def api_submit(quiz_id):
             "options_note": options_note,
         })
 
-    total = quiz["total_questions"]
+    total = len(quiz["questions"])
     subjective_count = sum(1 for q in quiz["questions"] if q.get("options_note"))
     scored_total = total - subjective_count
 
