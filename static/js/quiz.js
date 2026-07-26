@@ -131,13 +131,21 @@ function renderQuestion(index) {
   questionImage.alt = `Question ${q.id}`;
 
   optionsList.innerHTML = "";
-  ["A", "B", "C", "D"].forEach((letter) => {
-    const div = document.createElement("div");
-    div.className = "option-item option-abcd" + (answers[q.id] === letter ? " selected" : "");
-    div.innerHTML = `<span class="option-letter">${letter}</span>`;
-    div.addEventListener("click", () => selectOption(q.id, letter));
-    optionsList.appendChild(div);
-  });
+
+  if (q.options_note) {
+    const note = document.createElement("div");
+    note.className = "options-note-display";
+    note.textContent = q.options_note;
+    optionsList.appendChild(note);
+  } else {
+    ["A", "B", "C", "D"].forEach((letter) => {
+      const div = document.createElement("div");
+      div.className = "option-item option-abcd" + (answers[q.id] === letter ? " selected" : "");
+      div.innerHTML = `<span class="option-letter">${letter}</span>`;
+      div.addEventListener("click", () => selectOption(q.id, letter));
+      optionsList.appendChild(div);
+    });
+  }
 
   prevBtn.disabled = index === 0;
   nextBtn.textContent = index === questions.length - 1 ? "Finish" : "Next";
@@ -297,25 +305,41 @@ function renderSolutions() {
     const div = document.createElement("div");
     div.className = "solution-item";
 
-    let chipsHtml = "";
-    ["A", "B", "C", "D"].forEach((letter) => {
-      let cls = "";
-      if (letter === s.correct) cls = "correct-ans";
-      else if (letter === s.chosen && letter !== s.correct) cls = "wrong-chosen";
-      chipsHtml += `<span class="solution-chip ${cls}">${letter}</span>`;
-    });
-
-    const statusLabel = s.status === "correct" ? "✅ Correct"
-      : s.status === "incorrect" ? "❌ Incorrect" : "⏭ Skipped";
+    let bottomHtml;
+    if (s.options_note) {
+      bottomHtml = `
+        <div class="options-note-display" style="margin-bottom:8px;">${escapeHtmlLocal(s.options_note)}</div>
+        <div style="font-size:12px; color:#8a8fae;">📝 It's Subjective Question so Marks Can't Be Counted!</div>
+      `;
+    } else {
+      let chipsHtml = "";
+      ["A", "B", "C", "D"].forEach((letter) => {
+        let cls = "";
+        if (letter === s.correct) cls = "correct-ans";
+        else if (letter === s.chosen && letter !== s.correct) cls = "wrong-chosen";
+        chipsHtml += `<span class="solution-chip ${cls}">${letter}</span>`;
+      });
+      const statusLabel = s.status === "correct" ? "✅ Correct"
+        : s.status === "incorrect" ? "❌ Incorrect" : "⏭ Skipped";
+      bottomHtml = `
+        <div class="solution-chips">${chipsHtml}</div>
+        <div style="margin-top:8px; font-size:12px; color:#8a8fae;">${statusLabel}</div>
+      `;
+    }
 
     div.innerHTML = `
       <div class="sol-q">Q${s.id}</div>
       <img class="sol-image" src="${s.image_url}" alt="Question ${s.id}">
-      <div class="solution-chips">${chipsHtml}</div>
-      <div style="margin-top:8px; font-size:12px; color:#8a8fae;">${statusLabel}</div>
+      ${bottomHtml}
     `;
     solutionsListEl.appendChild(div);
   });
+}
+
+function escapeHtmlLocal(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 // ── Download score (.txt) ───────────────────────────────────────────────
