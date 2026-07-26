@@ -1,13 +1,8 @@
 // ── STRICT ADMIN LOGIN PORTAL ───────────────────────────────────────────
-// Case-sensitive on purpose. Any ONE of the listed Admin Keys / VIP Keys
-// is accepted, but the Owner Name must match exactly.
-// NOTE: this check runs in the browser, so treat it as a simple access
-// gate (not cryptographic security) — anyone with page-source access
-// could read these values. Good enough for "keep casual visitors out",
-// not for protecting truly sensitive data.
-const OWNER_NAME = "ViPxMSvBRO";
-const ADMIN_KEYS = ["MS#nEET_X9q!7LvP2", "NeeT$MS_A4r!8QxZ5", "mS@NeeT_K7#vP3Lx9"];
-const VIP_KEYS = ["ToXic#ViP_X9q!7LvP2", "tOxic@Vip_A4r!8QxZ5", "ToXic$ViP_K7#vP3Lx9"];
+// Real fix: the Owner Name / Admin Key / VIP Key are validated on the
+// server only (see /login in app.py). This file never holds those
+// values — there is nothing here for DevTools/Sources/eruda to reveal,
+// no matter how the page is inspected.
 const GET_KEYS_URL = "https://t.me/JapaneseFury";
 
 const loginGate = document.getElementById("loginGate");
@@ -19,18 +14,33 @@ const loginError = document.getElementById("loginError");
 const loginBtn = document.getElementById("loginBtn");
 const getKeysBtn = document.getElementById("getKeysBtn");
 
-loginBtn.addEventListener("click", () => {
-  const nameOk = ownerNameInput.value === OWNER_NAME;               // exact, case-sensitive
-  const adminOk = ADMIN_KEYS.includes(adminKeyInput.value);         // exact, case-sensitive
-  const vipOk = VIP_KEYS.includes(vipKeyInput.value);               // exact, case-sensitive
+loginBtn.addEventListener("click", async () => {
+  loginBtn.disabled = true;
+  try {
+    const res = await fetch("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        owner_name: ownerNameInput.value,
+        admin_key: adminKeyInput.value,
+        vip_key: vipKeyInput.value,
+      }),
+    });
+    const data = await res.json();
 
-  if (nameOk && adminOk && vipOk) {
-    loginError.classList.add("hidden");
-    loginGate.classList.add("hidden");
-    uploadWrapper.classList.remove("hidden");
-  } else {
-    loginError.textContent = "❌ Invalid Name / Admin Key / VIP Key. Check karo aur dobara try karo.";
+    if (data.ok) {
+      loginError.classList.add("hidden");
+      loginGate.classList.add("hidden");
+      uploadWrapper.classList.remove("hidden");
+    } else {
+      loginError.textContent = "❌ " + (data.error || "Invalid Name / Admin Key / VIP Key. Check karo aur dobara try karo.");
+      loginError.classList.remove("hidden");
+    }
+  } catch (err) {
+    loginError.textContent = "❌ Something went wrong: " + err.message;
     loginError.classList.remove("hidden");
+  } finally {
+    loginBtn.disabled = false;
   }
 });
 
@@ -170,6 +180,15 @@ uploadForm.addEventListener("submit", async (e) => {
     const data = await res.json();
 
     if (!data.ok) {
+      if (res.status === 401) {
+        uploadWrapper.classList.add("hidden");
+        loginGate.classList.remove("hidden");
+        loginError.textContent = "❌ Session expired. Dobara login karo.";
+        loginError.classList.remove("hidden");
+        generateBtn.disabled = false;
+        generateBtn.textContent = "NEXT ⚡";
+        return;
+      }
       statusBox.textContent = "❌ " + data.error;
       statusBox.classList.remove("hidden");
       statusBox.classList.add("error");
