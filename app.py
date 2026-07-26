@@ -3,9 +3,10 @@ import re
 import unicodedata
 import base64
 import uuid
-from datetime import datetime
+import functools
+from datetime import datetime, timedelta
 
-from flask import Flask, request, render_template, jsonify, redirect, url_for, Response
+from flask import Flask, request, render_template, jsonify, redirect, url_for, Response, session
 from werkzeug.utils import secure_filename
 
 from utils.db import get_db
@@ -26,6 +27,60 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
+
+# ─── Server-side Admin Auth (real fix — keys never reach the browser) ─────
+# Previously these were hardcoded in static/js/main.js, which meant anyone
+# opening DevTools -> Sources/Resources could read them directly. Now the
+# check happens ONLY here, server-side, via the /login route below. The
+# browser never receives OWNER_NAME / ADMIN_KEYS / VIP_KEYS in any form.
+OWNER_NAME = "ViPxMSvBRO"
+ADMIN_KEYS = ["MS#nEET_X9q!7LvP2", "NeeT$MS_A4r!8QxZ5", "mS@NeeT_K7#vP3Lx9"]
+VIP_KEYS = ["ToXic#ViP_X9q!7LvP2", "tOxic@Vip_A4r!8QxZ5", "ToXic$ViP_K7#vP3Lx9"]
+
+# SECRET_KEY signs the session cookie. Set a SECRET_KEY env var on Render
+# so admin sessions survive restarts/redeploys — without it, a fallback is
+# used and everyone is logged out whenever the process restarts.
+app.secret_key = os.environ.get("SECRET_KEY", "smartyms-dev-fallback-secret-change-me")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=12)
+
+
+def admin_required(view):
+    """Guards admin-only routes with the server-side session set by /login.
+    API routes get a JSON 401 (so existing frontend .json()/data.ok error
+    handling still works); page routes get redirected back to the login
+    portal at '/'.
+    """
+    @functools.wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("is_admin"):
+            if request.path.startswith("/api/") or request.path == "/upload":
+                return jsonify({"ok": False, "error": "Login required"}), 401
+            return redirect(url_for("index"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json(silent=True) or {}
+    name_ok = data.get("owner_name") == OWNER_NAME
+    admin_ok = data.get("admin_key") in ADMIN_KEYS
+    vip_ok = data.get("vip_key") in VIP_KEYS
+
+    if name_ok and admin_ok and vip_ok:
+        session.permanent = True
+        session["is_admin"] = True
+        return jsonify({"ok": True})
+
+    return jsonify({"ok": False, "error": "Invalid Name / Admin Key / VIP Key. Check karo aur dobara try karo."}), 401
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"ok": True})
 
 db = get_db()
 quizzes_col = db["quizzes"]
@@ -80,6 +135,7 @@ def index():
 
 # ─── API: Upload PDF -> OCR/Extract -> Save to Mongo -> return quiz id ────
 @app.route("/upload", methods=["POST"])
+@admin_required
 def upload():
     if "pdf_file" not in request.files:
         return jsonify({"ok": False, "error": "No file received"}), 400
@@ -168,6 +224,7 @@ def upload():
 
 # ─── Page: Edit Panel (review/fix everything before generating the link) ──
 @app.route("/edit/<path:draft_id>")
+@admin_required
 def edit_panel(draft_id):
     draft = drafts_col.find_one({"_id": draft_id}, {"title": 1})
     if not draft:
@@ -177,6 +234,7 @@ def edit_panel(draft_id):
 
 # ─── API: fetch full draft for the edit panel ──────────────────────────────
 @app.route("/api/draft/<path:draft_id>")
+@admin_required
 def api_get_draft(draft_id):
     draft = drafts_col.find_one({"_id": draft_id})
     if not draft:
@@ -195,6 +253,7 @@ def api_get_draft(draft_id):
 
 # ─── API: change a question's index number (with duplicate check) ─────────
 @app.route("/api/draft/<path:draft_id>/question/<int:qid>/reindex", methods=["POST"])
+@admin_required
 def api_draft_reindex(draft_id, qid):
     data = request.get_json(force=True) or {}
     new_id = data.get("new_id")
@@ -220,6 +279,7 @@ def api_draft_reindex(draft_id, qid):
 
 # ─── API: nudge a question up/down (swaps index with its neighbour) ───────
 @app.route("/api/draft/<path:draft_id>/question/<int:qid>/move", methods=["POST"])
+@admin_required
 def api_draft_move(draft_id, qid):
     data = request.get_json(force=True) or {}
     direction = data.get("direction")
@@ -246,6 +306,7 @@ def api_draft_move(draft_id, qid):
 
 # ─── API: replace a question's image ───────────────────────────────────────
 @app.route("/api/draft/<path:draft_id>/question/<int:qid>/image", methods=["POST"])
+@admin_required
 def api_draft_update_image(draft_id, qid):
     if "image" not in request.files:
         return jsonify({"ok": False, "error": "No image received"}), 400
@@ -271,6 +332,7 @@ def api_draft_update_image(draft_id, qid):
 
 # ─── API: edit the correct-answer key for one question ────────────────────
 @app.route("/api/draft/<path:draft_id>/question/<int:qid>/answer", methods=["POST"])
+@admin_required
 def api_draft_update_answer(draft_id, qid):
     data = request.get_json(force=True) or {}
     correct = data.get("correct")
@@ -292,6 +354,7 @@ def api_draft_update_answer(draft_id, qid):
 
 # ─── API: edit the options note (e.g. mark a question as subjective) ──────
 @app.route("/api/draft/<path:draft_id>/question/<int:qid>/options-note", methods=["POST"])
+@admin_required
 def api_draft_update_options_note(draft_id, qid):
     data = request.get_json(force=True) or {}
     note = (data.get("options_note") or "").strip()[:300]
@@ -311,6 +374,7 @@ def api_draft_update_options_note(draft_id, qid):
 
 # ─── API: remove a question from the draft ─────────────────────────────────
 @app.route("/api/draft/<path:draft_id>/question/<int:qid>", methods=["DELETE"])
+@admin_required
 def api_draft_delete_question(draft_id, qid):
     draft = drafts_col.find_one({"_id": draft_id})
     if not draft:
@@ -329,6 +393,7 @@ def api_draft_delete_question(draft_id, qid):
 
 # ─── API: add a brand-new question to the draft ────────────────────────────
 @app.route("/api/draft/<path:draft_id>/question", methods=["POST"])
+@admin_required
 def api_draft_add_question(draft_id):
     draft = drafts_col.find_one({"_id": draft_id})
     if not draft:
@@ -373,6 +438,7 @@ def api_draft_add_question(draft_id):
 
 # ─── API: "Submit & Generate Quiz" — turn the draft into a real live quiz ──
 @app.route("/api/draft/<path:draft_id>/finalize", methods=["POST"])
+@admin_required
 def api_draft_finalize(draft_id):
     draft = drafts_col.find_one({"_id": draft_id})
     if not draft:
