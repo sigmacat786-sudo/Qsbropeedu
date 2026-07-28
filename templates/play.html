@@ -8,8 +8,79 @@
 </head>
 <body>
 
+<!-- ── INSTRUCTIONS SCREEN (shown first, before anything else) ─────────── -->
+<div id="instructionsScreen" class="instructions-screen">
+  <div class="instructions-card">
+    <p class="instr-title-top">📋 Quiz Instructions</p>
+
+    <div class="instr-topinfo-row">
+      <div class="instr-topinfo-box instr-left">
+        <span class="instr-topinfo-label">Total Questions</span>
+        <span class="instr-topinfo-value">{{ total_questions }}</span>
+      </div>
+      <div class="instr-topinfo-box instr-right">
+        <span class="instr-topinfo-label">Total Marks</span>
+        <span class="instr-topinfo-value">{{ total_marks }}</span>
+      </div>
+    </div>
+
+    <p class="instr-testname">{{ title }}</p>
+
+    <div class="instr-guide">
+      <p class="instr-guide-title">Marking Scheme</p>
+      <ul class="instr-guide-list">
+        <li>✅ Correct Answer: <strong>+4 Marks</strong></li>
+        <li>❌ Incorrect Answer: <strong>-1 Marks</strong></li>
+        <li>⏭ Skipped Question: <strong>0 Marks</strong></li>
+        <li>📝 Subjective Question: <strong>0 Marks</strong></li>
+      </ul>
+      <p class="instr-guide-text">Objective Questions me 4 Options milenge — koi ek option choose karke <strong>Next</strong> par tap karo (ya <strong>Skip</strong> par tap karo). Piche jaane ke liye <strong>Previous</strong> button use karo.</p>
+      <p class="instr-guide-text">Subjective Questions ke liye aapko <strong>Zero (0) Marks</strong> milenge!</p>
+      <p class="instr-motivation">✨ Give your best shot — believe in yourself and shine bright! 💪🌟</p>
+    </div>
+
+    <button id="startTestBtn" class="btn btn-blue btn-start-test">START TEST</button>
+    <button id="ownerDashBtn" class="owner-dash-btn">OWNER DASHBOARD</button>
+  </div>
+</div>
+
+<!-- ── OWNER DASHBOARD LOGIN POPUPS ─────────────────────────────────────── -->
+<div id="ownerConfirmModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Are you sure to Open Owner Dashboard of this Quiz?</h2>
+    <div class="modal-actions">
+      <button id="ownerConfirmYes" class="btn btn-primary">YES</button>
+      <button id="ownerConfirmNo" class="btn btn-ghost">NO</button>
+    </div>
+  </div>
+</div>
+
+<div id="ownerNameModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Please Enter Owner Nick Name</h2>
+    <input type="text" id="ownerNameInput" class="login-input" placeholder="Owner Nick Name" autocomplete="off">
+    <p id="ownerNameError" class="gate-error hidden"></p>
+    <div class="modal-actions">
+      <button id="ownerNameSaveBtn" class="btn btn-blue btn-sm">Save &amp; Next</button>
+      <button id="ownerNameCancelBtn" class="btn btn-ghost btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="ownerKeyModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Great!<br>Now Enter Owner Key:</h2>
+    <input type="password" id="ownerKeyInput" class="login-input" placeholder="Owner Key" autocomplete="off">
+    <p id="ownerKeyError" class="gate-error hidden"></p>
+    <div class="modal-actions">
+      <button id="ownerKeySaveBtn" class="btn btn-blue btn-sm">Save &amp; Next</button>
+      <button id="ownerKeyCancelBtn" class="btn btn-ghost btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── NAME GATE (shown before quiz starts) ───────────────────────────── -->
-<div id="nameGate" class="modal">
+<div id="nameGate" class="modal hidden">
   <div class="modal-card gate-card">
     <p id="brandShimmer" class="brand-shimmer">Powered By: Smarty-MS-Toxic Bro</p>
 
@@ -111,6 +182,10 @@
       <div class="progress-card">
         <span>⏱ Time Taken</span>
         <strong id="resTime">00:00:00</strong>
+      </div>
+      <div class="progress-card">
+        <span>🏆 Your Rank</span>
+        <strong id="resRank">-</strong>
       </div>
     </div>
 

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Owner Dashboard — {{ title }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="owner-page">
+  <p class="owner-heading">OWNER DASHBOARD</p>
+  <p class="owner-subheading">{{ title }}</p>
+
+  <div class="owner-btn-list">
+    <a href="/owner/{{ quiz_id }}/scorecard" class="owner-btn">
+      <span class="owner-btn-icon">📊</span> Students Score card List
+    </a>
+
+    <a href="/owner/{{ quiz_id }}/top5" class="owner-btn">
+      <span class="owner-btn-icon">🏆</span> View Top 5 Students list
+    </a>
+
+    <button type="button" id="viewLinkBtn" class="owner-btn owner-btn-primary">
+      <span class="owner-btn-icon">🔗</span> View Original Link
+    </button>
+
+    <button type="button" id="deleteQuizBtn" class="owner-btn owner-btn-danger">
+      <span class="owner-btn-icon">🗑</span> Delete Quiz Link
+    </button>
+
+    <a href="/owner/{{ quiz_id }}/update" class="owner-btn">
+      <span class="owner-btn-icon">✏️</span> UPDATE QUIZ
+    </a>
+
+    <button type="button" id="backBtn" class="owner-btn owner-btn-back">← Back</button>
+  </div>
+</div>
+
+<!-- ── View Original Link modal ─────────────────────────────────────────── -->
+<div id="viewLinkModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Original Quiz Link</h2>
+    <div class="owner-link-box" id="linkText">{{ play_link }}</div>
+    <div class="modal-actions">
+      <button id="copyLinkBtn" class="btn btn-blue btn-sm">Copy</button>
+      <button id="closeLinkBtn" class="btn btn-ghost btn-sm">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Quiz: confirm ─────────────────────────────────────────────── -->
+<div id="deleteConfirmModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Are you sure to Delete this Quiz link?</h2>
+    <div class="modal-actions">
+      <button id="deleteConfirmYes" class="btn btn-primary">YES</button>
+      <button id="deleteConfirmNo" class="btn btn-ghost">NO</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Quiz: confirmation key ────────────────────────────────────── -->
+<div id="deleteKeyModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Please Enter Confirmation Key</h2>
+    <input type="password" id="deleteKeyInput" class="login-input" placeholder="Confirmation Key" autocomplete="off">
+    <p id="deleteKeyError" class="gate-error hidden"></p>
+    <div class="modal-actions">
+      <button id="deleteKeySaveBtn" class="btn btn-blue btn-sm">Save &amp; Next</button>
+      <button id="deleteKeyCancelBtn" class="btn btn-ghost btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+  const QUIZ_ID = {{ quiz_id | tojson }};
+  const PLAY_LINK = {{ play_link | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/owner_dashboard.js') }}"></script>
+</body>
+</html>

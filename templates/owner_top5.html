@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Top 5 Students — {{ title }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="owner-table-page">
+  <div class="topbar">
+    <button id="backBtn" class="link-btn">← Back to Dashboard</button>
+    <button id="downloadBtn" class="btn btn-blue btn-sm">Download list</button>
+  </div>
+
+  <div class="owner-table-topbar">
+    <p class="owner-table-title"><span class="owner-live-dot"></span>Top 5 Students — {{ title }}</p>
+  </div>
+
+  <div class="owner-table-wrap">
+    <table class="owner-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Rank</th>
+          <th>Marks</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr class="owner-empty-row"><td colspan="4">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const QUIZ_ID = {{ quiz_id | tojson }};
+  const DOWNLOAD_TOKEN = {{ download_token | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/owner_top5.js') }}"></script>
+</body>
+</html>
