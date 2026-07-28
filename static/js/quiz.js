@@ -18,6 +18,29 @@ function getUserId() {
   return id;
 }
 
+// ── DOM refs: Instructions screen + Owner Dashboard login (added) ────────
+const instructionsScreen = document.getElementById("instructionsScreen");
+const startTestBtn = document.getElementById("startTestBtn");
+const ownerDashBtn = document.getElementById("ownerDashBtn");
+
+const ownerConfirmModal = document.getElementById("ownerConfirmModal");
+const ownerConfirmYes = document.getElementById("ownerConfirmYes");
+const ownerConfirmNo = document.getElementById("ownerConfirmNo");
+
+const ownerNameModal = document.getElementById("ownerNameModal");
+const ownerNameInput = document.getElementById("ownerNameInput");
+const ownerNameError = document.getElementById("ownerNameError");
+const ownerNameSaveBtn = document.getElementById("ownerNameSaveBtn");
+const ownerNameCancelBtn = document.getElementById("ownerNameCancelBtn");
+
+const ownerKeyModal = document.getElementById("ownerKeyModal");
+const ownerKeyInput = document.getElementById("ownerKeyInput");
+const ownerKeyError = document.getElementById("ownerKeyError");
+const ownerKeySaveBtn = document.getElementById("ownerKeySaveBtn");
+const ownerKeyCancelBtn = document.getElementById("ownerKeyCancelBtn");
+
+let ownerNicknameEntered = "";
+
 // ── DOM refs ────────────────────────────────────────────────────────────
 const nameGate = document.getElementById("nameGate");
 const nameInput = document.getElementById("nameInput");
@@ -53,6 +76,7 @@ const resCorrect = document.getElementById("resCorrect");
 const resIncorrect = document.getElementById("resIncorrect");
 const resSkipped = document.getElementById("resSkipped");
 const resTime = document.getElementById("resTime");
+const resRank = document.getElementById("resRank");
 const reattemptBtn = document.getElementById("reattemptBtn");
 const viewSolutionsBtn = document.getElementById("viewSolutionsBtn");
 const downloadScoreBtn = document.getElementById("downloadScoreBtn");
@@ -60,6 +84,82 @@ const downloadScoreBtn = document.getElementById("downloadScoreBtn");
 const solutionsModal = document.getElementById("solutionsModal");
 const solutionsListEl = document.getElementById("solutionsList");
 const closeSolutionsBtn = document.getElementById("closeSolutionsBtn");
+
+// ── Instructions screen ─────────────────────────────────────────────────
+startTestBtn.addEventListener("click", () => {
+  instructionsScreen.classList.add("hidden");
+  nameGate.classList.remove("hidden");
+});
+
+// ── Owner Dashboard login flow ──────────────────────────────────────────
+ownerDashBtn.addEventListener("click", () => {
+  ownerConfirmModal.classList.remove("hidden");
+});
+
+ownerConfirmNo.addEventListener("click", () => {
+  ownerConfirmModal.classList.add("hidden");
+});
+
+ownerConfirmYes.addEventListener("click", () => {
+  ownerConfirmModal.classList.add("hidden");
+  ownerNameInput.value = "";
+  ownerNameError.classList.add("hidden");
+  ownerNameModal.classList.remove("hidden");
+});
+
+ownerNameCancelBtn.addEventListener("click", () => {
+  ownerNameModal.classList.add("hidden");
+});
+
+ownerNameSaveBtn.addEventListener("click", async () => {
+  const val = ownerNameInput.value.trim();
+  if (!val) {
+    ownerNameError.textContent = "Nick Name likhna zaroori hai.";
+    ownerNameError.classList.remove("hidden");
+    return;
+  }
+  const res = await fetch(`/api/owner/${encodeURIComponent(QUIZ_ID)}/verify-name`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nickname: val }),
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    // Wrong nickname -> silently return to the instructions page.
+    ownerNameModal.classList.add("hidden");
+    return;
+  }
+  ownerNicknameEntered = val;
+  ownerNameModal.classList.add("hidden");
+  ownerKeyInput.value = "";
+  ownerKeyError.classList.add("hidden");
+  ownerKeyModal.classList.remove("hidden");
+});
+
+ownerKeyCancelBtn.addEventListener("click", () => {
+  ownerKeyModal.classList.add("hidden");
+});
+
+ownerKeySaveBtn.addEventListener("click", async () => {
+  const val = ownerKeyInput.value.trim();
+  if (!val) {
+    ownerKeyError.textContent = "Owner Key likhna zaroori hai.";
+    ownerKeyError.classList.remove("hidden");
+    return;
+  }
+  const res = await fetch(`/api/owner/${encodeURIComponent(QUIZ_ID)}/verify-key`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nickname: ownerNicknameEntered, key: val }),
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    // Wrong key -> silently return to the instructions page.
+    ownerKeyModal.classList.add("hidden");
+    return;
+  }
+  window.location.href = `/owner/${encodeURIComponent(QUIZ_ID)}`;
+});
 
 // ── Name gate ───────────────────────────────────────────────────────────
 // Blocks emoji / pictograph characters; letters, numbers, spaces, basic punctuation allowed.
@@ -268,6 +368,7 @@ async function submitQuiz() {
   resIncorrect.textContent = data.incorrect;
   resSkipped.textContent = data.not_answered;
   resTime.textContent = timeTakenStr;
+  resRank.textContent = data.rank ? ("#" + data.rank) : "-";
 
   statCorrect.textContent = data.correct;
   statIncorrect.textContent = data.incorrect;
@@ -361,6 +462,7 @@ downloadScoreBtn.addEventListener("click", () => {
     `Marks Obtained: ${lastResult.marks_obtained}`,
     `Percentage: ${lastResult.percentage}%`,
     `Time Taken: ${lastResult.time_taken_str}`,
+    `Rank: ${lastResult.rank ? "#" + lastResult.rank : "-"}`,
     ``,
     lastResult.message,
   ].join("\n");
