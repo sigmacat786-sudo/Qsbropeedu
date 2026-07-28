@@ -551,3 +551,204 @@ body {
 }
 .note-hint { font-size: 12px; color: #8a8fae; margin: 8px 0 4px; }
 .grid-hint { font-size: 11px; color: #9295aa; margin-top: 10px; line-height: 1.5; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Instructions Screen (added) — shown first when a quiz link is opened
+   ══════════════════════════════════════════════════════════════════════ */
+.instructions-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #f4f5fb 0%, #eef0ff 100%);
+}
+.instructions-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 10px 30px rgba(30, 30, 60, 0.1);
+  text-align: center;
+}
+.instr-title-top { margin: 0 0 16px; font-size: 20px; font-weight: 800; color: #4a3fd6; }
+.instr-topinfo-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.instr-topinfo-box {
+  flex: 1;
+  background: #f1f2ff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+}
+.instr-topinfo-box.instr-right { text-align: right; background: #fff2e0; }
+.instr-topinfo-label { display: block; font-size: 11px; color: #8a8fae; text-transform: uppercase; }
+.instr-topinfo-value { display: block; font-size: 18px; font-weight: 800; color: #33364a; }
+.instr-testname {
+  font-size: 15px;
+  font-weight: 700;
+  color: #33364a;
+  background: #f7f7fc;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+  word-break: break-word;
+}
+.instr-guide { text-align: left; background: #fafaff; border: 1px solid #eceefb; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; }
+.instr-guide-title { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: #5b5fc7; text-transform: uppercase; letter-spacing: .4px; }
+.instr-guide-list { margin: 0 0 10px; padding-left: 20px; font-size: 13px; color: #33364a; line-height: 1.8; }
+.instr-guide-text { font-size: 12.5px; color: #6b6f80; margin: 6px 0; line-height: 1.6; }
+.instr-motivation { font-size: 13px; font-weight: 700; color: #1a8f4c; text-align: center; margin: 12px 0 0; }
+
+.btn-start-test {
+  margin-top: 4px;
+  font-size: 16px;
+  padding: 15px;
+  animation: startTestGlow 1.6s ease-in-out infinite;
+}
+@keyframes startTestGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(43, 111, 239, 0.45); }
+  50% { box-shadow: 0 0 0 10px rgba(43, 111, 239, 0); }
+}
+
+.owner-dash-btn {
+  display: block;
+  margin: 14px auto 0;
+  background: none;
+  border: none;
+  color: #8a8fae;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+.owner-dash-btn:hover { color: #5b5fc7; text-decoration: underline; }
+
+/* ── Quiz Ended (deleted link) page (added) ─────────────────────────── */
+.ended-card { padding: 44px 32px; }
+.ended-title { font-size: 24px; font-weight: 800; color: #d43a3a; margin: 0 0 14px; }
+.ended-text { font-size: 14px; color: #33364a; line-height: 1.7; margin: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Owner Dashboard (added)
+   ══════════════════════════════════════════════════════════════════════ */
+.owner-page {
+  min-height: 100vh;
+  padding: 24px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.owner-heading {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: #4a3fd6;
+  margin: 10px 0 4px;
+  letter-spacing: .4px;
+}
+.owner-subheading { text-align: center; font-size: 13px; color: #8a8fae; margin: 0 0 24px; word-break: break-word; }
+
+.owner-btn-list { display: flex; flex-direction: column; gap: 12px; }
+.owner-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(30,30,60,.06);
+  font-size: 15px;
+  font-weight: 700;
+  color: #33364a;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+}
+.owner-btn:hover { box-shadow: 0 6px 18px rgba(30,30,60,.1); }
+.owner-btn .owner-btn-icon { font-size: 20px; flex-shrink: 0; }
+.owner-btn-danger { color: #d43a3a; }
+.owner-btn-primary { color: #2b6fef; }
+.owner-btn-back {
+  margin-top: 6px;
+  background: #eef0fa;
+  justify-content: center;
+  text-align: center;
+  font-size: 13px;
+  padding: 12px;
+}
+
+.owner-link-box {
+  background: #f7f7fc;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  word-break: break-all;
+  margin: 12px 0;
+  text-align: left;
+}
+
+/* ── Owner Scorecard / Top 5 tables (added) ─────────────────────────── */
+.owner-table-page { padding: 20px; max-width: 900px; margin: 0 auto; }
+.owner-table-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.owner-table-title { font-size: 16px; font-weight: 800; color: #33364a; margin: 0; }
+.owner-live-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #29c46f;
+  margin-right: 6px;
+  animation: liveDotPulse 1.4s ease-in-out infinite;
+}
+@keyframes liveDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+.owner-table-wrap {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(30,30,60,.05);
+  overflow-x: auto;
+}
+.owner-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
+.owner-table th {
+  text-align: left;
+  padding: 12px 14px;
+  background: #f7f7fc;
+  color: #6b6f80;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  white-space: nowrap;
+}
+.owner-table td { padding: 12px 14px; border-top: 1px solid #eceefb; white-space: nowrap; }
+.owner-table tr:hover td { background: #fafaff; }
+.owner-empty-row td { text-align: center; color: #8a8fae; padding: 24px; }
+.owner-rank-badge {
+  display: inline-block;
+  background: #fff6d8;
+  color: #8a6a00;
+  border-radius: 8px;
+  padding: 2px 10px;
+  font-weight: 700;
+}
+
+/* ── Owner Update Quiz page (added) ─────────────────────────────────── */
+.owner-update-bar {
+  max-width: 1100px;
+  margin: 0 auto 30px;
+  padding: 0 20px;
+  display: flex;
+  gap: 10px;
+}
+.owner-update-bar .btn { width: auto; flex: 1; padding: 16px; font-size: 15px; }
+.btn-back-small { flex: 0 0 auto !important; padding: 16px 22px !important; }
